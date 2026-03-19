@@ -565,8 +565,7 @@ namespace NzbDrone.Core.Organizer
             }
 
             wasTruncated = true;
-            var truncated = title.Truncate(maxLength - 3).TrimEnd(BookTitleTrimCharacters);
-            return $"{truncated}{{ellipsis}}";
+            return title.Truncate(maxLength - 3).TrimEnd(BookTitleTrimCharacters);
         }
 
         private int GetLengthWithoutBookTitle(string pattern, NamingConfig namingConfig)
