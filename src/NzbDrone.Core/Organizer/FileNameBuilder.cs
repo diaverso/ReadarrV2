@@ -121,15 +121,15 @@ namespace NzbDrone.Core.Organizer
                 var maxBookTitleLength = maxPathSegmentLength - GetLengthWithoutBookTitle(component, namingConfig);
 
                 // Pass 2: replace book tokens (with truncated titles) and unescape {{ / }}
-                var bookTitleTruncated = false;
-                AddBookTokens(tokenHandlers, edition, maxBookTitleLength, ref bookTitleTruncated);
+                var bookTitleTruncated = new bool[] { false };
+                AddBookTokens(tokenHandlers, edition, maxBookTitleLength, bookTitleTruncated);
                 component = ReplaceTokens(component, tokenHandlers, namingConfig, escape: false).Trim();
 
                 component = FileNameCleanupRegex.Replace(component, match => match.Captures[0].Value[0].ToString());
                 component = TrimSeparatorsRegex.Replace(component, string.Empty);
 
                 // Append ellipsis after all cleanup so it survives separator collapsing
-                if (bookTitleTruncated)
+                if (bookTitleTruncated[0])
                 {
                     component = component.TrimEnd(BookTitleTrimCharacters) + "...";
                 }
@@ -294,16 +294,20 @@ namespace NzbDrone.Core.Organizer
             tokenHandlers["{Release YearFirst}"] = m => null;
         }
 
-        private void AddBookTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, Edition edition, int maxTitleLength, ref bool truncated)
+        private void AddBookTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, Edition edition, int maxTitleLength, bool[] truncated)
         {
             tokenHandlers["{Book Title}"] = m =>
             {
                 var t = GetBookTitle(edition.Title, maxTitleLength, out var wasTruncated);
-                if (wasTruncated) truncated = true;
+                if (wasTruncated)
+                {
+                    truncated[0] = true;
+                }
+
                 return t;
             };
-            tokenHandlers["{Book CleanTitle}"] = m => GetBookTitle(CleanTitle(edition.Title), maxTitleLength, out _);
-            tokenHandlers["{Book TitleThe}"] = m => GetBookTitle(TitleThe(edition.Title), maxTitleLength, out _);
+            tokenHandlers["{Book CleanTitle}"] = m => GetBookTitle(CleanTitle(edition.Title), maxTitleLength);
+            tokenHandlers["{Book TitleThe}"] = m => GetBookTitle(TitleThe(edition.Title), maxTitleLength);
 
             var (titleNoSub, subtitle) = edition.Title.SplitBookTitle(edition.Book.Value.AuthorMetadata.Value.Name);
 
@@ -549,11 +553,18 @@ namespace NzbDrone.Core.Organizer
 
         private string GetBookTitle(string title, int maxLength)
         {
+            return GetBookTitle(title, maxLength, out _);
+        }
+
+        private string GetBookTitle(string title, int maxLength, out bool wasTruncated)
+        {
             if (title.GetByteCount() <= maxLength)
             {
+                wasTruncated = false;
                 return title;
             }
 
+            wasTruncated = true;
             var truncated = title.Truncate(maxLength - 3).TrimEnd(BookTitleTrimCharacters);
             return $"{truncated}{{ellipsis}}";
         }
