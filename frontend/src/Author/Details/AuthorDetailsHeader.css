@@ -53,11 +53,11 @@
 }
 
 .title {
+  text-wrap: balance;
+  letter-spacing: -0.02em;
   font-weight: 600;
   font-size: 46px;
   line-height: 56px;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
 }
 
 .toggleMonitoredContainer {

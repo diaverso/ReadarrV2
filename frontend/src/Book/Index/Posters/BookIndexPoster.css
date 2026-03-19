@@ -6,8 +6,8 @@ $hoverScale: 1.05;
   &:hover {
     z-index: 2;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px);
     transition: box-shadow 200ms ease, transform 200ms ease;
+    transform: translateY(-2px);
 
     .controls {
       opacity: 1;

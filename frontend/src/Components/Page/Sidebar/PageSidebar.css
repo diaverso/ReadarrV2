@@ -2,8 +2,8 @@
   flex: 0 0 $sidebarWidth;
   overflow: hidden;
   width: $sidebarWidth;
-  background-color: var(--sidebarBackgroundColor);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: var(--sidebarBackgroundColor);
   transition: transform 300ms ease-in-out;
   transform: translateX(0);
 }

@@ -19,8 +19,8 @@
 
 .poster img {
   width: 100%;
-  height: auto;
   max-height: 250px;
+  height: auto;
   object-fit: contain;
 }
 

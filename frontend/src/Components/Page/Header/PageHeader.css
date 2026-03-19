@@ -4,8 +4,8 @@
   align-items: center;
   flex: 0 0 auto;
   height: $headerHeight;
-  background-color: var(--pageHeaderBackgroundColor);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: var(--pageHeaderBackgroundColor);
   color: var(--white);
 }
 

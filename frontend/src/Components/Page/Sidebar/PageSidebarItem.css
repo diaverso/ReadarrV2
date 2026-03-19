@@ -12,15 +12,15 @@
 .link {
   display: block;
   padding: 11px 20px;
-  color: var(--sidebarColor);
-  font-size: 13px;
-  letter-spacing: 0.01em;
   border-radius: 0 6px 6px 0;
+  color: var(--sidebarColor);
+  letter-spacing: 0.01em;
+  font-size: 13px;
 
   &:hover,
   &:focus {
-    color: var(--white);
     background-color: rgba(255, 255, 255, 0.06);
+    color: var(--white);
     text-decoration: none;
   }
 }
