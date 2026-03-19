@@ -294,12 +294,12 @@ namespace NzbDrone.Core.Organizer
             tokenHandlers["{Release YearFirst}"] = m => null;
         }
 
-        private void AddBookTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, Edition edition, int maxTitleLength = int.MaxValue, ref bool truncated = ref Unsafe.NullRef<bool>())
+        private void AddBookTokens(Dictionary<string, Func<TokenMatch, string>> tokenHandlers, Edition edition, int maxTitleLength, ref bool truncated)
         {
             tokenHandlers["{Book Title}"] = m =>
             {
                 var t = GetBookTitle(edition.Title, maxTitleLength, out var wasTruncated);
-                if (wasTruncated && !Unsafe.IsNullRef(ref truncated)) truncated = true;
+                if (wasTruncated) truncated = true;
                 return t;
             };
             tokenHandlers["{Book CleanTitle}"] = m => GetBookTitle(CleanTitle(edition.Title), maxTitleLength, out _);
