@@ -15,9 +15,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Readarr/Readarr.git"
+    "url": "git://github.com/diaverso/ReadarrV2.git"
   },
-  "author": "Team Readarr",
+  "author": "Team Readarr / Community Fork",
   "license": "GPL-3.0",
   "readmeFilename": "readme.md",
   "main": "index.ts",

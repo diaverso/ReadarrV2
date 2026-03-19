@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Backend — Build + Unit Tests (.NET 10)
+  # ─────────────────────────────────────────────
+  backend:
+    name: Backend (dotnet)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore dependencies
+        run: dotnet restore src/Readarr.sln
+
+      - name: Build
+        run: dotnet build src/Readarr.sln --no-restore --configuration Release
+
+      - name: Unit tests
+        run: |
+          dotnet test src/NzbDrone.Common.Test/Readarr.Common.Test.csproj     --no-build --configuration Release --logger "console;verbosity=minimal"
+          dotnet test src/NzbDrone.Core.Test/Readarr.Core.Test.csproj         --no-build --configuration Release --logger "console;verbosity=minimal"
+          dotnet test src/NzbDrone.Host.Test/Readarr.Host.Test.csproj         --no-build --configuration Release --logger "console;verbosity=minimal"
+          dotnet test src/NzbDrone.Libraries.Test/Readarr.Libraries.Test.csproj --no-build --configuration Release --logger "console;verbosity=minimal"
+
+  # ─────────────────────────────────────────────
+  # Frontend — Lint + Build (Node 20 / Yarn)
+  # ─────────────────────────────────────────────
+  frontend:
+    name: Frontend (yarn)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.11.1'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint (ESLint)
+        run: yarn lint
+
+      - name: Lint (Stylelint)
+        run: yarn stylelint-linux
+
+      - name: Build
+        run: yarn build

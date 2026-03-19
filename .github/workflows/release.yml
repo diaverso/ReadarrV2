@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.11.1'
+          cache: 'yarn'
+
+      - name: Install frontend dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build frontend
+        run: yarn build
+
+      - name: Build backend
+        run: dotnet build src/Readarr.sln --configuration Release
+
+      - name: Publish (linux-x64)
+        run: |
+          dotnet publish src/NzbDrone/Readarr.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained false \
+            --output _artifacts/linux-x64
+
+      - name: Publish (win-x64)
+        run: |
+          dotnet publish src/NzbDrone/Readarr.csproj \
+            --configuration Release \
+            --runtime win-x64 \
+            --self-contained false \
+            --output _artifacts/win-x64
+
+      - name: Package artifacts
+        run: |
+          cd _artifacts
+          tar -czf Readarr-linux-x64-${{ github.ref_name }}.tar.gz linux-x64/
+          zip -r  Readarr-win-x64-${{ github.ref_name }}.zip  win-x64/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Readarr Community Fork ${{ github.ref_name }}"
+          body_path: docs/en/changelog.md
+          files: |
+            _artifacts/Readarr-linux-x64-${{ github.ref_name }}.tar.gz
+            _artifacts/Readarr-win-x64-${{ github.ref_name }}.zip
+          draft: false
+          prerelease: false
