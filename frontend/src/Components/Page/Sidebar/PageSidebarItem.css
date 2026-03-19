@@ -1,0 +1,55 @@
+.item {
+  border-left: 3px solid transparent;
+  color: var(--sidebarColor);
+  transition: background-color 150ms ease, border-left-color 150ms ease;
+}
+
+.isActiveItem {
+  border-left: 3px solid var(--primaryColor);
+  background-color: var(--sidebarActiveBackgroundColor);
+}
+
+.link {
+  display: block;
+  padding: 11px 20px;
+  color: var(--sidebarColor);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  border-radius: 0 6px 6px 0;
+
+  &:hover,
+  &:focus {
+    color: var(--white);
+    background-color: rgba(255, 255, 255, 0.06);
+    text-decoration: none;
+  }
+}
+
+.childLink {
+  composes: link;
+
+  padding: 8px 20px;
+}
+
+.isActiveLink {
+  color: var(--white);
+}
+
+.isActiveParentLink {
+  background-color: var(--sidebarActiveBackgroundColor);
+}
+
+.iconContainer {
+  display: inline-block;
+  margin-right: 7px;
+  width: 18px;
+  text-align: center;
+}
+
+.noIcon {
+  margin-left: 25px;
+}
+
+.status {
+  float: right;
+}

@@ -1,0 +1,58 @@
+/* stylelint-disable */
+* {
+  box-sizing: border-box;
+}
+
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+*:focus {
+  outline: none;
+}
+/* stylelint-enable */
+
+html,
+body {
+  color: var(--textColor);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Helvetica Neue', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Override normalize */
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  margin: 0;
+  font-size: inherit;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+/* Better defaults for unordererd lists */
+
+ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+@media only screen and (min-device-width: 375px) and (max-device-width: 812px) {
+  input,
+  optgroup,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
