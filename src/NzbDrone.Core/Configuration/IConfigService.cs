@@ -90,6 +90,11 @@ namespace NzbDrone.Core.Configuration
         string ProxyBypassFilter { get; }
         bool ProxyBypassLocalAddresses { get; }
 
+        //Tor Proxy
+        bool TorProxyEnabled { get; }
+        string TorProxyHost { get; }
+        int TorProxyPort { get; }
+
         // Backups
         string BackupFolder { get; }
         int BackupInterval { get; }

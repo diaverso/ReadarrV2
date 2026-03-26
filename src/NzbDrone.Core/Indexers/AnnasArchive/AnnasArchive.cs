@@ -29,7 +29,7 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
 
         public override IParseIndexerResponse GetParser()
         {
-            return new AnnasArchiveParser(Settings);
+            return new AnnasArchiveParser(Settings, _httpClient);
         }
     }
 }

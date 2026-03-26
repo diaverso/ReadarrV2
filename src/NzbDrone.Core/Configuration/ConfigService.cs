@@ -400,6 +400,10 @@ namespace NzbDrone.Core.Configuration
 
         public bool ProxyBypassLocalAddresses => GetValueBoolean("ProxyBypassLocalAddresses", true);
 
+        public bool TorProxyEnabled => GetValueBoolean("TorProxyEnabled", false);
+        public string TorProxyHost => GetValue("TorProxyHost", "127.0.0.1");
+        public int TorProxyPort => GetValueInt("TorProxyPort", 9050);
+
         public string BackupFolder => GetValue("BackupFolder", "Backups");
 
         public int BackupInterval => GetValueInt("BackupInterval", 7);

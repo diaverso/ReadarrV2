@@ -4,7 +4,9 @@ using System.Net;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NLog;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Http;
 using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.Parser.Model;
 
@@ -13,6 +15,8 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
     public class AnnasArchiveParser : IParseIndexerResponse
     {
         private readonly AnnasArchiveSettings _settings;
+        private readonly IHttpClient _httpClient;
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         // Fallback HTML parser: extracts /md5/HASH links and surrounding metadata
         private static readonly Regex Md5LinkRegex = new Regex(
@@ -24,9 +28,10 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
             @"(?<year>\d{4})[,\s]+(?<lang>[a-z]{2,3})[,\s]+(?<ext>epub|pdf|mobi|azw3|djvu|fb2|doc|rtf)[,\s]+(?<size>[\d.,]+ (?:KB|MB|kB|Mb|Gb|B))",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        public AnnasArchiveParser(AnnasArchiveSettings settings)
+        public AnnasArchiveParser(AnnasArchiveSettings settings, IHttpClient httpClient = null)
         {
             _settings = settings;
+            _httpClient = httpClient;
         }
 
         public IList<ReleaseInfo> ParseResponse(IndexerResponse indexerResponse)
@@ -187,7 +192,39 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
 
         private string BuildDownloadUrl(string md5)
         {
-            // Use Anna's Archive fast download endpoint
+            if (!string.IsNullOrWhiteSpace(_settings.ApiKey) && _httpClient != null)
+            {
+                return ResolveFastDownloadUrl(md5);
+            }
+
+            return $"{_settings.BaseUrl.TrimEnd('/')}/md5/{md5}";
+        }
+
+        private string ResolveFastDownloadUrl(string md5)
+        {
+            var apiUrl = $"{_settings.BaseUrl.TrimEnd('/')}/dyn/api/fast_download.json?md5={md5}";
+            try
+            {
+                var request = new HttpRequest(apiUrl);
+                request.Headers.Add("Authorization", $"Bearer {_settings.ApiKey}");
+                request.Headers.Add("User-Agent", "Mozilla/5.0 (compatible; Readarr/1.0)");
+
+                var response = _httpClient.ExecuteAsync(request).GetAwaiter().GetResult();
+                if (!response.HasHttpError && !string.IsNullOrWhiteSpace(response.Content))
+                {
+                    var json = JObject.Parse(response.Content);
+                    var downloadUrl = json["download_url"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(downloadUrl))
+                    {
+                        return downloadUrl;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn(ex, "Failed to resolve Anna's Archive fast download URL for md5 {0}", md5);
+            }
+
             return $"{_settings.BaseUrl.TrimEnd('/')}/md5/{md5}";
         }
 

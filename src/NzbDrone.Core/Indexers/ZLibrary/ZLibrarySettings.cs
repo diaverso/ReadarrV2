@@ -20,12 +20,12 @@ namespace NzbDrone.Core.Indexers.ZLibrary
 
         public ZLibrarySettings()
         {
-            BaseUrl = "https://singlelogin.re";
+            BaseUrl = "http://zlibrary24tuxziyiyfr7zd46ytefdqbqd2axkmxm4o5374ptpc52fad.onion";
             Formats = "epub,pdf,mobi,azw3";
             Languages = "english";
         }
 
-        [FieldDefinition(0, Label = "API URL", Advanced = true, HelpText = "Z-Library API base URL. Use singlelogin.re or your personal Z-Library domain.")]
+        [FieldDefinition(0, Label = "API URL", Advanced = true, HelpText = "Z-Library API base URL. Defaults to the Tor onion address — requires Tor running on 127.0.0.1:9050 and Tor Proxy enabled in Settings → General. Alternatively use https://singlelogin.re for clearnet access.")]
         public string BaseUrl { get; set; }
 
         [FieldDefinition(1, Label = "Email", Privacy = PrivacyLevel.UserName, HelpText = "Your Z-Library / singlelogin.re account email.")]

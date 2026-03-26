@@ -19,6 +19,20 @@ namespace NzbDrone.Core.Http
 
         public HttpProxySettings GetProxySettings(HttpUri uri)
         {
+            // Route .onion addresses through Tor proxy when enabled
+            if (uri.Host?.EndsWith(".onion", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                if (_configService.TorProxyEnabled)
+                {
+                    return new HttpProxySettings(
+                        ProxyType.Socks5,
+                        _configService.TorProxyHost,
+                        _configService.TorProxyPort,
+                        null,
+                        false);
+                }
+            }
+
             var proxySettings = GetProxySettings();
             if (proxySettings == null)
             {
