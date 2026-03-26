@@ -7,16 +7,23 @@ using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.IndexerSearch.Definitions;
 
 namespace NzbDrone.Core.Indexers.ZLibrary
 {
     public class ZLibraryRequestGenerator : IIndexerRequestGenerator
     {
+        private const string TorOnionUrl = "http://zlibrary24tuxziyiyfr7zd46ytefdqbqd2axkmxm4o5374ptpc52fad.onion";
+
         public ZLibrarySettings Settings { get; set; }
         public IHttpClient HttpClient { get; set; }
         public ICached<Dictionary<string, string>> AuthCache { get; set; }
         public Logger Logger { get; set; }
+        public IConfigService ConfigService { get; set; }
+
+        private string EffectiveBaseUrl =>
+            ConfigService?.TorProxyEnabled == true ? TorOnionUrl : Settings.BaseUrl;
 
         public virtual IndexerPageableRequestChain GetRecentRequests()
         {
@@ -101,7 +108,7 @@ namespace NzbDrone.Core.Indexers.ZLibrary
                 }
             }
 
-            var searchUrl = $"{Settings.BaseUrl.TrimEnd('/')}/eapi/book/search";
+            var searchUrl = $"{EffectiveBaseUrl.TrimEnd('/')}/eapi/book/search";
             var request = new IndexerRequest(searchUrl, HttpAccept.Json);
             request.HttpRequest.Method = HttpMethod.Post;
             request.HttpRequest.SetContent(string.Join("&", bodyParts));
@@ -117,7 +124,7 @@ namespace NzbDrone.Core.Indexers.ZLibrary
             yield return request;
         }
 
-        private string CacheKey => Settings.BaseUrl.TrimEnd('/');
+        private string CacheKey => EffectiveBaseUrl.TrimEnd('/');
 
         private async Task Authenticate()
         {
@@ -127,7 +134,7 @@ namespace NzbDrone.Core.Indexers.ZLibrary
                 return;
             }
 
-            var loginUrl = $"{Settings.BaseUrl.TrimEnd('/')}/eapi/user/login";
+            var loginUrl = $"{EffectiveBaseUrl.TrimEnd('/')}/eapi/user/login";
             var body = $"email={Uri.EscapeDataString(Settings.Email)}&password={Uri.EscapeDataString(Settings.Password)}";
 
             var loginRequest = new HttpRequest(loginUrl);

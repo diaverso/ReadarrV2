@@ -38,6 +38,7 @@ namespace NzbDrone.Core.Indexers.ZLibrary
                 HttpClient = _httpClient,
                 AuthCache = _authCache,
                 Logger = _logger,
+                ConfigService = _configService,
             };
         }
 
