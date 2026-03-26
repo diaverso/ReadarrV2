@@ -1,0 +1,15 @@
+services:
+  readarr:
+    build: .
+    image: readarr:local
+    container_name: readarr
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./config:/config
+      - /books:/books
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Madrid
