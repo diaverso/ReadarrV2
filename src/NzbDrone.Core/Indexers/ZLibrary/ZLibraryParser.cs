@@ -84,8 +84,8 @@ namespace NzbDrone.Core.Indexers.ZLibrary
         {
             int.TryParse(book.Year, out var year);
 
-            var author = WebUtility.HtmlDecode(book.Author ?? string.Empty).Trim();
-            var title = WebUtility.HtmlDecode(book.Title ?? string.Empty).Trim();
+            var author = WebUtility.HtmlDecode(book.GetAuthor()).Trim();
+            var title = WebUtility.HtmlDecode(book.GetTitle() ?? string.Empty).Trim();
             var ext = book.Extension?.ToUpperInvariant() ?? string.Empty;
             var lang = book.Language ?? string.Empty;
 
