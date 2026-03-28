@@ -4,7 +4,7 @@ This document tracks changes made in the community-maintained fork after the ori
 
 ---
 
-## [Unreleased] — 2026-03-18
+## [Unreleased] — 2026-03-28
 
 ### Fixed
 
@@ -37,6 +37,14 @@ This document tracks changes made in the community-maintained fork after the ori
 - Table rows: `min-height: 42px` added; hover transition sped up from 500ms to 200ms ease for snappier feedback
 - Table cell padding: `10px 8px` (up from `8px`) for more readable rows
 - `font-feature-settings: 'kern' 1, 'liga' 1` added globally for better Inter ligatures and kerning
+
+### Fixed (First-Run Authentication Modal)
+
+- **[CRITICAL]** Fixed the first-run "Set Up Authentication" modal: clicking **Save** now correctly persists `AuthenticationMethod=Basic` to `config.xml`, creates the user in the database, and closes the modal. Previously the modal reappeared on every page load regardless of what was entered.
+  - **Root cause (backend):** Kestrel disables synchronous I/O by default. `SaveHostConfig` attempted a synchronous `StreamReader.ReadToEnd()` on the request body, which threw `InvalidOperationException: Synchronous operations are disallowed` — the save never completed. Fixed by re-reading the body asynchronously (`ReadToEndAsync`) using the seekable stream provided by `BufferingMiddleware`, then parsing auth fields with `STJson`.
+  - **Root cause (frontend):** `createSaveHandler` called `getSectionState(getState(), section)` without the `isFullStateTree` flag, reading from the wrong Redux state path and producing an empty object. Fixed by passing `true` as the third argument.
+  - Added `ValidateResource` override in `HostConfigController` to fill in required non-auth fields (port, bind address, branch, backup intervals) from the current config when a partial PUT is received from the first-run modal — prevents FluentValidation from rejecting the request.
+  - `SaveConfigDictionary` may skip fields whose values match the current config; added explicit `SetValue("AuthenticationMethod", ...)` and `SetValue("AuthenticationRequired", ...)` calls to guarantee the XML is always updated.
 
 ### Fixed (PR Backports)
 

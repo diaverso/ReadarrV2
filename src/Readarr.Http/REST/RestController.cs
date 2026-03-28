@@ -92,7 +92,7 @@ namespace Readarr.Http.REST
             base.OnActionExecuting(context);
         }
 
-        protected void ValidateResource(TResource resource, bool skipValidate = false, bool skipSharedValidate = false)
+        protected virtual void ValidateResource(TResource resource, bool skipValidate = false, bool skipSharedValidate = false)
         {
             if (resource == null)
             {

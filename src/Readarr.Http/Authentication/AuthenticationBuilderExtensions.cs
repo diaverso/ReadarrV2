@@ -1,5 +1,6 @@
 using System;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Diacritical;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -49,6 +50,23 @@ namespace Readarr.Http.Authentication
                     options.ExpireTimeSpan = TimeSpan.FromDays(7);
                     options.SlidingExpiration = true;
                     options.ReturnUrlParameter = "returnUrl";
+
+                    // Force a real 302 redirect to /login even when [ApiController] is present.
+                    // Without this override, [ApiController] causes ASP.NET Core to treat the
+                    // challenge as an AJAX request and return 401 instead of redirecting.
+                    options.Events = new CookieAuthenticationEvents
+                    {
+                        OnRedirectToLogin = ctx =>
+                        {
+                            ctx.Response.Redirect(ctx.RedirectUri);
+                            return Task.CompletedTask;
+                        },
+                        OnRedirectToAccessDenied = ctx =>
+                        {
+                            ctx.Response.Redirect(ctx.RedirectUri);
+                            return Task.CompletedTask;
+                        }
+                    };
                 });
 
             return services.AddAuthentication()

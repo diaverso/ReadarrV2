@@ -30,6 +30,9 @@ Third-party metadata mirrors exist, but as we're not involved with them at all, 
 - **Open Library** native support — set `MetadataSource` to `openlibrary` in Settings → General
 - **Goodreads** token now configured via Settings → General (no more hardcoded keys)
 
+### Bug fixes
+- **First-run authentication modal**: clicking Save now correctly sets Basic auth, creates the user, and closes the modal (was broken by Kestrel's async-only I/O policy + Redux state path bug)
+
 ### Bug fixes (PR backports)
 - Author images in "Add Author" modal no longer overflow (#4103)
 - File rename templates: `{{` and `}}` now correctly escape curly braces (#4086)

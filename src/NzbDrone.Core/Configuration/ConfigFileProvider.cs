@@ -26,6 +26,7 @@ namespace NzbDrone.Core.Configuration
         Dictionary<string, object> GetConfigDictionary();
         void SaveConfigDictionary(Dictionary<string, object> configValues);
         void EnsureDefaultConfigFile();
+        void SetValue(string key, Enum value);
 
         string BindAddress { get; }
         int Port { get; }

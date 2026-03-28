@@ -4,7 +4,7 @@ Este documento registra los cambios realizados en el fork mantenido por la comun
 
 ---
 
-## [No publicado] — 2026-03-18
+## [No publicado] — 2026-03-29
 
 ### Corregido
 
@@ -37,6 +37,14 @@ Este documento registra los cambios realizados en el fork mantenido por la comun
 - Filas de tabla: `min-height: 42px` añadido; transición de hover acelerada de 500ms a 200ms ease para mayor reactividad
 - Padding de celdas de tabla: `10px 8px` (antes `8px`) para filas más legibles
 - `font-feature-settings: 'kern' 1, 'liga' 1` añadido globalmente para mejores ligaduras y kerning de Inter
+
+### Corregido (Modal de Autenticación en Primera Ejecución)
+
+- **[CRÍTICO]** Corregido el modal "Configurar Autenticación" de primera ejecución: hacer click en **Guardar** ahora persiste correctamente `AuthenticationMethod=Basic` en `config.xml`, crea el usuario en la base de datos y cierra el modal. Anteriormente el modal reaparecía en cada carga de página independientemente de lo ingresado.
+  - **Causa raíz (backend):** Kestrel deshabilita la E/S síncrona por defecto. `SaveHostConfig` intentaba una lectura síncrona del cuerpo con `StreamReader.ReadToEnd()`, lo que lanzaba `InvalidOperationException: Synchronous operations are disallowed` — el guardado nunca se completaba. Corregido releyendo el cuerpo de forma asíncrona (`ReadToEndAsync`) usando el stream con seek proporcionado por `BufferingMiddleware`, y parseando los campos de auth con `STJson`.
+  - **Causa raíz (frontend):** `createSaveHandler` llamaba a `getSectionState(getState(), section)` sin el flag `isFullStateTree`, leyendo de una ruta de estado Redux incorrecta y produciendo un objeto vacío. Corregido pasando `true` como tercer argumento.
+  - Añadido override de `ValidateResource` en `HostConfigController` para rellenar los campos no-auth requeridos (puerto, dirección de enlace, rama, intervalos de backup) desde la configuración actual cuando se recibe un PUT parcial desde el modal de primera ejecución — previene que FluentValidation rechace la petición.
+  - `SaveConfigDictionary` puede omitir campos cuyos valores coincidan con la configuración actual; añadidas llamadas explícitas a `SetValue("AuthenticationMethod", ...)` y `SetValue("AuthenticationRequired", ...)` para garantizar que el XML siempre se actualice.
 
 ### Corregido (Backports de PRs)
 

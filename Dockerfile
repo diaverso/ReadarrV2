@@ -13,6 +13,19 @@ RUN dotnet publish src/NzbDrone.Console/Readarr.Console.csproj \
     --self-contained false \
     -o /app/out
 
+# Readarr.Mono is loaded dynamically on Linux and is not a direct reference,
+# so it is not included in the publish output — publish it separately and copy
+# all output files (including native libs like libMonoPosixHelper.so).
+RUN dotnet publish src/NzbDrone.Mono/Readarr.Mono.csproj \
+    -c Debug \
+    -f net10.0 \
+    -p:RunAnalyzers=false \
+    -p:EnforceCodeStyleInBuild=false \
+    --self-contained false \
+    -o /app/mono-out \
+    && cp -n /app/mono-out/*.dll /app/out/ \
+    && find /app/mono-out -name "*.so" -exec cp -n {} /app/out/ \;
+
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
@@ -23,7 +36,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=build /app/out ./
-COPY UI/ ./UI/
+# In Debug builds, Readarr resolves UiFolder as "../UI" relative to /app → /UI/
+COPY UI/ /UI/
 
 EXPOSE 8787
 VOLUME ["/config", "/books"]
