@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using FluentValidation.Results;
 using NLog;
@@ -47,11 +49,42 @@ namespace NzbDrone.Core.Indexers.ZLibrary
             return new ZLibraryParser(Settings);
         }
 
-        protected override async Task Test(List<ValidationFailure> failures)
+        protected override async Task<ValidationFailure> TestConnection()
         {
             // Clear cached session so credentials are re-validated on test
             _authCache.Remove(Settings.BaseUrl.TrimEnd('/'));
-            await base.Test(failures);
+
+            try
+            {
+                var loginUrl = $"{Settings.BaseUrl.TrimEnd('/')}/eapi/user/login";
+                var body = $"email={Uri.EscapeDataString(Settings.Email ?? string.Empty)}&password={Uri.EscapeDataString(Settings.Password ?? string.Empty)}";
+
+                var loginRequest = new HttpRequest(loginUrl);
+                loginRequest.Method = HttpMethod.Post;
+                loginRequest.SetContent(body);
+                loginRequest.Headers.ContentType = "application/x-www-form-urlencoded";
+                loginRequest.Headers.Add("User-Agent", "Mozilla/5.0 (compatible; Readarr/1.0)");
+
+                var response = await _httpClient.ExecuteAsync(loginRequest);
+
+                if (response.HasHttpError)
+                {
+                    return new ValidationFailure(string.Empty, $"Unable to connect to Z-Library. HTTP {(int)response.StatusCode}");
+                }
+
+                var content = response.Content ?? string.Empty;
+                if (content.Contains("\"error\"") || content.Contains("\"ok\":0") || content.Contains("\"ok\": 0"))
+                {
+                    return new ValidationFailure("Email", "Z-Library authentication failed. Check your email and password.");
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Z-Library test connection failed");
+                return new ValidationFailure(string.Empty, "Unable to connect to Z-Library: " + ex.Message);
+            }
         }
     }
 }

@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Threading.Tasks;
+using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
@@ -30,6 +35,29 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
         public override IParseIndexerResponse GetParser()
         {
             return new AnnasArchiveParser(Settings, _httpClient);
+        }
+
+        protected override async Task<ValidationFailure> TestConnection()
+        {
+            try
+            {
+                var url = Settings.BaseUrl.TrimEnd('/') + "/search?q=test&output=json";
+                var request = new HttpRequest(url);
+                request.Headers.Add("User-Agent", "Mozilla/5.0 (compatible; Readarr/1.0)");
+                var response = await _httpClient.ExecuteAsync(request);
+
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    return new ValidationFailure(string.Empty, $"Unable to connect to Anna's Archive. HTTP {(int)response.StatusCode}");
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Anna's Archive test connection failed");
+                return new ValidationFailure(string.Empty, "Unable to connect to Anna's Archive: " + ex.Message);
+            }
         }
     }
 }
