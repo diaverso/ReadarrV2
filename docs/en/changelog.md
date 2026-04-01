@@ -4,6 +4,27 @@ This document tracks changes made in the community-maintained fork after the ori
 
 ---
 
+## [Unreleased] — 2026-04-01
+
+### Added
+
+#### Z-Library Indexer
+- **Session Cookies** field: paste raw browser session cookies directly (supports Laravel-based mirrors like z-lib.cv: `z_lib_session=...; zl_logged_in=1`)
+- **Remix User ID** and **Remix User Key** fields (Advanced): manual cookie auth for singlelogin.rs without relying on programmatic login
+- Authentication now attempted in order: (1) raw session cookies → (2) remix_userid + remix_userkey → (3) EAPI email/password login
+
+#### UI — Download Clients
+- New **Other** section in the Add Download Client modal to display clients with `unknown` protocol (e.g. HTTP Download)
+
+### Fixed
+
+#### Z-Library Indexer
+- **[CRITICAL]** `400 Bad Request` on Save/Test when `BaseUrl` was not explicitly set (Advanced field not submitted by the frontend) — removed `ValidRootUrl()` validator that rejected null values
+- `NullReferenceException` on `BaseUrl.TrimEnd('/')` when field was null — replaced with null-safe `?.TrimEnd('/') ?? "https://singlelogin.rs"` in all usages (RequestGenerator, Parser, main class)
+- Default URL updated from `singlelogin.re` (domain seized by the FBI in May 2024) to `singlelogin.rs`
+
+---
+
 ## [Unreleased] — 2026-03-28
 
 ### Fixed
