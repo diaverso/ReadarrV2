@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
+using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Http.REST.Attributes;
 using Readarr.Http.Validation;
@@ -53,6 +56,38 @@ namespace Readarr.Http.REST
         }
 
         protected abstract TResource GetResourceById(int id);
+
+        public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+        {
+            if (Request.Body.CanSeek && (Request.Method == "POST" || Request.Method == "PUT"))
+            {
+                Request.Body.Seek(0, SeekOrigin.Begin);
+                using var reader = new StreamReader(Request.Body, leaveOpen: true);
+                var body = await reader.ReadToEndAsync();
+                Request.Body.Seek(0, SeekOrigin.Begin);
+
+                if (!string.IsNullOrEmpty(body))
+                {
+                    try
+                    {
+                        var parsed = STJson.Deserialize<TResource>(body);
+                        if (parsed != null)
+                        {
+                            foreach (var key in context.ActionArguments.Keys.ToList())
+                            {
+                                if (context.ActionArguments[key] is TResource)
+                                {
+                                    context.ActionArguments[key] = parsed;
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            await base.OnActionExecutionAsync(context, next);
+        }
 
         public override void OnActionExecuting(ActionExecutingContext context)
         {

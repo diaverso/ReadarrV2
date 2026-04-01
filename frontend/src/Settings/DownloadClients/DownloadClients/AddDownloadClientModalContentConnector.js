@@ -19,13 +19,15 @@ function createMapStateToProps() {
 
       const usenetDownloadClients = _.filter(schema, { protocol: 'usenet' });
       const torrentDownloadClients = _.filter(schema, { protocol: 'torrent' });
+      const otherDownloadClients = _.filter(schema, (c) => c.protocol !== 'usenet' && c.protocol !== 'torrent');
 
       return {
         isSchemaFetching,
         isSchemaPopulated,
         schemaError,
         usenetDownloadClients,
-        torrentDownloadClients
+        torrentDownloadClients,
+        otherDownloadClients
       };
     }
   );

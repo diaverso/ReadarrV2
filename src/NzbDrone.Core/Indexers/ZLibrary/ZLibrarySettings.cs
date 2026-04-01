@@ -8,9 +8,7 @@ namespace NzbDrone.Core.Indexers.ZLibrary
     {
         public ZLibrarySettingsValidator()
         {
-            RuleFor(c => c.BaseUrl).ValidRootUrl();
-            RuleFor(c => c.Email).NotEmpty();
-            RuleFor(c => c.Password).NotEmpty();
+            // BaseUrl is optional — code falls back to default if null
         }
     }
 
@@ -20,27 +18,43 @@ namespace NzbDrone.Core.Indexers.ZLibrary
 
         public ZLibrarySettings()
         {
-            BaseUrl = "https://singlelogin.re";
+            BaseUrl = "https://singlelogin.rs";
             Formats = "epub,pdf,mobi,azw3";
             Languages = "english";
+            UseTor = false;
         }
 
-        [FieldDefinition(0, Label = "API URL", Advanced = true, HelpText = "Z-Library API base URL. Use https://singlelogin.re for clearnet, or the Tor onion address for anonymous access (requires Tor on 127.0.0.1:9050 and Tor Proxy enabled in Settings → General).")]
-        public string BaseUrl { get; set; }
+        [FieldDefinition(0, Label = "Session Cookies", Privacy = PrivacyLevel.Password,
+            HelpText = "Paste your Z-Library session cookies. Firefox: F12 > Storage > Cookies. Format: name=value; name2=value2. For z-lib.cv use: z_lib_session=VALUE; zl_logged_in=1")]
+        public string SessionCookies { get; set; }
 
-        [FieldDefinition(1, Label = "Email", Privacy = PrivacyLevel.UserName, HelpText = "Your Z-Library / singlelogin.re account email.")]
+        [FieldDefinition(1, Label = "Remix User ID", Privacy = PrivacyLevel.UserName, Advanced = true,
+            HelpText = "For singlelogin.rs only: your remix_userid cookie value.")]
+        public string RemixUserId { get; set; }
+
+        [FieldDefinition(2, Label = "Remix User Key", Type = FieldType.Password, Privacy = PrivacyLevel.Password, Advanced = true,
+            HelpText = "For singlelogin.rs only: your remix_userkey cookie value.")]
+        public string RemixUserKey { get; set; }
+
+        [FieldDefinition(3, Label = "Email", Privacy = PrivacyLevel.UserName, Advanced = true, HelpText = "Z-Library account email (fallback login).")]
         public string Email { get; set; }
 
-        [FieldDefinition(2, Label = "Password", Type = FieldType.Password, Privacy = PrivacyLevel.Password, HelpText = "Your Z-Library / singlelogin.re account password.")]
+        [FieldDefinition(4, Label = "Password", Type = FieldType.Password, Privacy = PrivacyLevel.Password, Advanced = true, HelpText = "Z-Library account password (fallback login).")]
         public string Password { get; set; }
 
-        [FieldDefinition(3, Label = "Formats", HelpText = "Comma-separated file formats (epub,pdf,mobi,azw3).", Advanced = true)]
+        [FieldDefinition(5, Label = "Use Tor", Type = FieldType.Checkbox, HelpText = "Route Z-Library requests through the Tor network.", Advanced = true)]
+        public bool UseTor { get; set; }
+
+        [FieldDefinition(6, Label = "API URL", Advanced = true, HelpText = "Z-Library base URL (e.g. https://singlelogin.rs, https://z-lib.id).")]
+        public string BaseUrl { get; set; }
+
+        [FieldDefinition(7, Label = "Formats", HelpText = "Comma-separated file formats (epub,pdf,mobi,azw3).", Advanced = true)]
         public string Formats { get; set; }
 
-        [FieldDefinition(4, Label = "Languages", HelpText = "Comma-separated language names (english,spanish,french). Leave empty for all.", Advanced = true)]
+        [FieldDefinition(8, Label = "Languages", HelpText = "Comma-separated language names (english,spanish,french). Leave empty for all.", Advanced = true)]
         public string Languages { get; set; }
 
-        [FieldDefinition(5, Type = FieldType.Number, Label = "Early Download Limit", Unit = "days", HelpText = "Time before release date Readarr will download from this indexer, empty is no limit.", Advanced = true)]
+        [FieldDefinition(9, Type = FieldType.Number, Label = "Early Download Limit", Unit = "days", HelpText = "Time before release date Readarr will download from this indexer, empty is no limit.", Advanced = true)]
         public int? EarlyReleaseLimit { get; set; }
 
         public NzbDroneValidationResult Validate()

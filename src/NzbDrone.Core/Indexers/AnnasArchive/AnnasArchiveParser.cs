@@ -197,7 +197,9 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
                 return ResolveFastDownloadUrl(md5);
             }
 
-            return $"{_settings.BaseUrl.TrimEnd('/')}/md5/{md5}";
+            // Slow download server #1 — HttpBlackhole will parse the HTML page,
+            // extract the "📚 Download now" link, and follow it to the actual file.
+            return $"{_settings.BaseUrl.TrimEnd('/')}/slow_download/{md5}/0/0";
         }
 
         private string ResolveFastDownloadUrl(string md5)

@@ -25,6 +25,7 @@ class AddDownloadClientModalContent extends Component {
       schemaError,
       usenetDownloadClients,
       torrentDownloadClients,
+      otherDownloadClients,
       onDownloadClientSelect,
       onModalClose
     } = this.props;
@@ -94,6 +95,26 @@ class AddDownloadClientModalContent extends Component {
                     }
                   </div>
                 </FieldSet>
+
+                {
+                  otherDownloadClients.length > 0 &&
+                    <FieldSet legend="Other">
+                      <div className={styles.downloadClients}>
+                        {
+                          otherDownloadClients.map((downloadClient) => {
+                            return (
+                              <AddDownloadClientItem
+                                key={downloadClient.implementation}
+                                implementation={downloadClient.implementation}
+                                {...downloadClient}
+                                onDownloadClientSelect={onDownloadClientSelect}
+                              />
+                            );
+                          })
+                        }
+                      </div>
+                    </FieldSet>
+                }
               </div>
           }
         </ModalBody>
@@ -115,6 +136,7 @@ AddDownloadClientModalContent.propTypes = {
   schemaError: PropTypes.object,
   usenetDownloadClients: PropTypes.arrayOf(PropTypes.object).isRequired,
   torrentDownloadClients: PropTypes.arrayOf(PropTypes.object).isRequired,
+  otherDownloadClients: PropTypes.arrayOf(PropTypes.object).isRequired,
   onDownloadClientSelect: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired
 };

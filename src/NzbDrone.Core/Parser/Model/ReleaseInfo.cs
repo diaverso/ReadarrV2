@@ -44,6 +44,11 @@ namespace NzbDrone.Core.Parser.Model
         [JsonIgnore]
         public PendingReleaseReason? PendingReleaseReason { get; set; }
 
+        // Extra HTTP headers to add when the download client fetches DownloadUrl.
+        // Used by indexers (e.g. Z-Library) that require auth headers on the download request.
+        [JsonIgnore]
+        public Dictionary<string, string> CustomDownloadHeaders { get; set; }
+
         public int Age
         {
             get { return DateTime.UtcNow.Subtract(PublishDate).Days; }

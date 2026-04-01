@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.Parser.Model;
 
@@ -11,11 +13,22 @@ namespace NzbDrone.Core.Indexers.ZLibrary
 {
     public class ZLibraryParser : IParseIndexerResponse
     {
-        private readonly ZLibrarySettings _settings;
+        private const string TorOnionUrl = "http://bookszlibb74ugqojhzhg2a63w5i2atv5bqarulgczawnbmsb6s6qead.onion";
 
-        public ZLibraryParser(ZLibrarySettings settings)
+        private readonly ZLibrarySettings _settings;
+        private readonly ICached<Dictionary<string, string>> _authCache;
+        private readonly IConfigService _configService;
+
+        private bool UseTor => _settings.UseTor || _configService?.TorProxyEnabled == true;
+        private string CacheKey => UseTor ? TorOnionUrl : (_settings.BaseUrl?.TrimEnd('/') ?? "https://singlelogin.rs");
+
+        public ZLibraryParser(ZLibrarySettings settings,
+            ICached<Dictionary<string, string>> authCache = null,
+            IConfigService configService = null)
         {
             _settings = settings;
+            _authCache = authCache;
+            _configService = configService;
         }
 
         public IList<ReleaseInfo> ParseResponse(IndexerResponse indexerResponse)
@@ -102,36 +115,26 @@ namespace NzbDrone.Core.Indexers.ZLibrary
                 Size = book.Filesize,
                 DownloadProtocol = DownloadProtocol.Unknown,
                 PublishDate = year > 0 ? new DateTime(year, 1, 1) : DateTime.UtcNow,
+                CustomDownloadHeaders = GetAuthHeaders(),
             };
         }
 
-        private string BuildTitle(string title, string author, int year, string ext, string lang)
+        private static string BuildTitle(string title, string author, int year, string ext, string lang)
         {
             var parts = new List<string>();
 
             if (!string.IsNullOrWhiteSpace(author))
             {
                 parts.Add(author);
+                parts.Add("-");
             }
 
-            parts.Add("-");
             parts.Add(string.IsNullOrWhiteSpace(title) ? "Unknown Title" : title);
 
             var tags = new List<string>();
-            if (year > 0)
-            {
-                tags.Add(year.ToString());
-            }
-
-            if (!string.IsNullOrWhiteSpace(ext))
-            {
-                tags.Add(ext);
-            }
-
-            if (!string.IsNullOrWhiteSpace(lang))
-            {
-                tags.Add(lang);
-            }
+            if (year > 0) tags.Add(year.ToString());
+            if (!string.IsNullOrWhiteSpace(ext)) tags.Add(ext);
+            if (!string.IsNullOrWhiteSpace(lang)) tags.Add(lang);
 
             if (tags.Count > 0)
             {
@@ -143,10 +146,23 @@ namespace NzbDrone.Core.Indexers.ZLibrary
 
         private string BuildDownloadUrl(ZLibraryBook book)
         {
-            // Direct download URL: /{id}/{hash}/file/download
-            // Falls back to book page if hash is missing
-            var baseUrl = _settings.BaseUrl.TrimEnd('/');
+            var baseUrl = UseTor ? TorOnionUrl : (_settings.BaseUrl?.TrimEnd('/') ?? "https://singlelogin.rs");
 
+            if (!string.IsNullOrWhiteSpace(book.DownloadUrl))
+            {
+                return book.DownloadUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                    ? book.DownloadUrl
+                    : $"{baseUrl}{book.DownloadUrl}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(book.DownloadLink))
+            {
+                return book.DownloadLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                    ? book.DownloadLink
+                    : $"{baseUrl}{book.DownloadLink}";
+            }
+
+            // EAPI download endpoint
             if (!string.IsNullOrWhiteSpace(book.Id) && !string.IsNullOrWhiteSpace(book.Hash))
             {
                 return $"{baseUrl}/eapi/book/{book.Id}/{book.Hash}";
@@ -157,7 +173,7 @@ namespace NzbDrone.Core.Indexers.ZLibrary
 
         private string BuildInfoUrl(ZLibraryBook book)
         {
-            var baseUrl = _settings.BaseUrl.TrimEnd('/');
+            var baseUrl = UseTor ? TorOnionUrl : (_settings.BaseUrl?.TrimEnd('/') ?? "https://singlelogin.rs");
 
             if (!string.IsNullOrWhiteSpace(book.Url))
             {
@@ -170,6 +186,31 @@ namespace NzbDrone.Core.Indexers.ZLibrary
             }
 
             return baseUrl;
+        }
+
+        private Dictionary<string, string> GetAuthHeaders()
+        {
+            var session = _authCache?.Find(CacheKey);
+            if (session == null) return null;
+
+            if (session.TryGetValue("cookieString", out var cookieStr) && !string.IsNullOrWhiteSpace(cookieStr))
+            {
+                return new Dictionary<string, string> { { "Cookie", cookieStr } };
+            }
+
+            if (session.TryGetValue("userId", out var userId) &&
+                session.TryGetValue("userKey", out var userKey) &&
+                !string.IsNullOrWhiteSpace(userId) &&
+                !string.IsNullOrWhiteSpace(userKey))
+            {
+                return new Dictionary<string, string>
+                {
+                    { "remix-userid", userId },
+                    { "remix-userkey", userKey }
+                };
+            }
+
+            return null;
         }
     }
 }

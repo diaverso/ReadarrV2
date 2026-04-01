@@ -263,7 +263,7 @@ namespace NzbDrone.Host
             app.UseMiddleware<StartingUpMiddleware>();
             app.UseMiddleware<CacheHeaderMiddleware>();
             app.UseMiddleware<IfModifiedMiddleware>();
-            app.UseMiddleware<BufferingMiddleware>(new List<string> { "/api/v1/command", "/api/v1/config/host" });
+            app.UseMiddleware<BufferingMiddleware>(new List<string> { "/api/v1" });
 
             app.UseWebSockets();
 

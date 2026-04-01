@@ -58,6 +58,12 @@ namespace NzbDrone.Core.Indexers.ZLibrary
         [JsonProperty("download_url")]
         public string DownloadUrl { get; set; }
 
+        [JsonProperty("download_link")]
+        public string DownloadLink { get; set; }
+
+        [JsonProperty("href")]
+        public string Href { get; set; }
+
         // Helpers
         public string GetTitle() => !string.IsNullOrWhiteSpace(Name) ? Name : Title;
 
