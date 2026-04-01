@@ -4,6 +4,27 @@ Este documento registra los cambios realizados en el fork mantenido por la comun
 
 ---
 
+## [No publicado] — 2026-04-01
+
+### Añadido
+
+#### Indexer Z-Library
+- Campo **Session Cookies**: permite pegar las cookies de sesión del navegador directamente (soporta mirrors tipo z-lib.cv con auth Laravel: `z_lib_session=...; zl_logged_in=1`)
+- Campos **Remix User ID** y **Remix User Key** (Avanzado): autenticación manual con cookies de singlelogin.rs sin depender del login programático
+- La autenticación ahora se intenta en orden: (1) cookies de sesión raw → (2) remix_userid + remix_userkey → (3) login EAPI con email/contraseña
+
+#### UI — Clientes de Descarga
+- Nueva sección **Other** en el modal "Añadir Cliente de Descarga" para mostrar clientes con protocolo `unknown` (e.g. HTTP Download)
+
+### Corregido
+
+#### Indexer Z-Library
+- **[CRÍTICO]** `400 Bad Request` al guardar/probar el indexer cuando el campo `BaseUrl` no estaba explícitamente definido (campo Avanzado no enviado por el frontend) — eliminado el validador `ValidRootUrl()` que rechazaba el valor null
+- `NullReferenceException` en `BaseUrl.TrimEnd('/')` cuando el campo era null — reemplazado con `?.TrimEnd('/') ?? "https://singlelogin.rs"` en todos los usos (RequestGenerator, Parser, clase principal)
+- URL por defecto actualizada de `singlelogin.re` (dominio confiscado por el FBI en mayo de 2024) a `singlelogin.rs`
+
+---
+
 ## [No publicado] — 2026-03-29
 
 ### Corregido
