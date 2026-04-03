@@ -8,6 +8,11 @@ Este documento registra los cambios realizados en el fork mantenido por la comun
 
 ### Añadido
 
+#### Notificaciones — Google Play Books — Estructura de Carpetas en Drive
+- Los libros subidos ahora se organizan en Google Drive bajo `Books/{Nombre Autor}/libro.epub` para libros independientes y `Books/{Nombre Autor}/{Nombre Serie}/libro.epub` para libros de una serie
+- Las carpetas se crean automáticamente en el primer uso y se reutilizan en subidas posteriores (sin duplicados)
+- Los nombres de autor y serie se limpian antes de usarlos como nombres de carpeta (se eliminan caracteres de control)
+
 #### Metadatos — Selección de Edición por Idioma Preferido
 - Cuando el idioma de la UI es distinto del inglés (p.ej. español), `BookInfoProxy` ahora selecciona como **edición monitorizada** la edición en ese idioma, en lugar de la más popular
 - El título del libro mostrado en la lista de libros del autor se actualiza al título de la edición en el idioma preferido cuando existe una coincidencia (p.ej. "El pájaro y el corazón de piedra" en lugar del título en inglés de la obra)

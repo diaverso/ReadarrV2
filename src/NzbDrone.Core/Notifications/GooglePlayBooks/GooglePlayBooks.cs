@@ -22,11 +22,26 @@ namespace NzbDrone.Core.Notifications.GooglePlayBooks
 
         public override void OnReleaseImport(BookDownloadMessage message)
         {
+            var authorName = message.Author?.Metadata?.Value?.Name;
+
+            string seriesName = null;
+            try
+            {
+                seriesName = message.Book?.SeriesLinks?.Value
+                    ?.Find(x => x.IsPrimary)?.Series?.Value?.Title
+                    ?? message.Book?.SeriesLinks?.Value
+                        ?.Find(x => x.Series?.Value != null)?.Series?.Value?.Title;
+            }
+            catch
+            {
+                // SeriesLinks may not be loaded — upload without series folder
+            }
+
             foreach (var bookFile in message.BookFiles)
             {
                 try
                 {
-                    _proxy.UploadBook(bookFile.Path, Settings);
+                    _proxy.UploadBook(bookFile.Path, authorName, seriesName, Settings);
                 }
                 catch (Exception ex)
                 {

@@ -8,6 +8,11 @@ This document tracks changes made in the community-maintained fork after the ori
 
 ### Added
 
+#### Notifications — Google Play Books — Drive Folder Structure
+- Uploaded books are now organized in Google Drive under `Books/{Author Name}/book.epub` for standalone books and `Books/{Author Name}/{Series Name}/book.epub` for series entries
+- Folders are created automatically on first use and reused on subsequent uploads (no duplicates)
+- Author and series names are sanitized before use as folder names (control characters removed)
+
 #### Metadata — Language-Preferred Edition Selection
 - When the UI language is set to a non-English language (e.g. Spanish), `BookInfoProxy` now selects the edition in that language as the **monitored edition** instead of the most popular one
 - The book title displayed in the author's book list is updated to the preferred-language edition's title when a match exists (e.g. "El pájaro y el corazón de piedra" instead of the English work title)

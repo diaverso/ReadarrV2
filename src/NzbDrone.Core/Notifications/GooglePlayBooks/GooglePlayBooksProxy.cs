@@ -14,7 +14,7 @@ namespace NzbDrone.Core.Notifications.GooglePlayBooks
     public interface IGooglePlayBooksProxy
     {
         void TestConnection(GooglePlayBooksSettings settings);
-        void UploadBook(string filePath, GooglePlayBooksSettings settings);
+        void UploadBook(string filePath, string authorName, string seriesName, GooglePlayBooksSettings settings);
     }
 
     public class GooglePlayBooksProxy : IGooglePlayBooksProxy
@@ -25,8 +25,8 @@ namespace NzbDrone.Core.Notifications.GooglePlayBooks
         private const string TokenUrl = "https://oauth2.googleapis.com/token";
 
         // Google Drive API — uploading an EPUB/PDF to Drive makes it appear in Play Books automatically.
-        // The old Books API /useruploadedbooks endpoint was deprecated and returns 404.
         private const string DriveUploadUrl = "https://www.googleapis.com/upload/drive/v3/files";
+        private const string DriveFilesUrl = "https://www.googleapis.com/drive/v3/files";
         private const string DriveAboutUrl = "https://www.googleapis.com/drive/v3/about?fields=user";
 
         public GooglePlayBooksProxy(IHttpClient httpClient, Logger logger)
@@ -56,7 +56,7 @@ namespace NzbDrone.Core.Notifications.GooglePlayBooks
             }
         }
 
-        public void UploadBook(string filePath, GooglePlayBooksSettings settings)
+        public void UploadBook(string filePath, string authorName, string seriesName, GooglePlayBooksSettings settings)
         {
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
@@ -99,11 +99,13 @@ namespace NzbDrone.Core.Notifications.GooglePlayBooks
                     "and regenerate the refresh token with scope https://www.googleapis.com/auth/drive.file");
             }
 
+            // Resolve folder hierarchy: Books/{Author}[/{Series}]
+            var targetFolderId = ResolveTargetFolder(authorName, seriesName, accessToken);
+
             // Build multipart/related body: JSON metadata + binary file
-            // This sets the filename and MIME type so Play Books recognises the book.
             var boundary = "readarr_" + Guid.NewGuid().ToString("N");
-            var metadataJson = $"{{\"name\":{JsonSerializer.Serialize(fileName)},\"mimeType\":\"{mimeType}\"}}";
-            var metadataBytes = Encoding.UTF8.GetBytes(metadataJson);
+            var metadataObj = $"{{\"name\":{JsonSerializer.Serialize(fileName)},\"mimeType\":\"{mimeType}\",\"parents\":[\"{targetFolderId}\"]}}";
+            var metadataBytes = Encoding.UTF8.GetBytes(metadataObj);
 
             byte[] multipartBody;
             using (var ms = new MemoryStream())
@@ -147,8 +149,91 @@ namespace NzbDrone.Core.Notifications.GooglePlayBooks
                 throw new Exception($"Google Drive upload failed ({(int)response.StatusCode}): {body}");
             }
 
-            _logger.Info("Successfully uploaded {0} to Google Drive (Play Books)", fileName);
+            _logger.Info("Successfully uploaded {0} to Google Drive (Play Books) in folder {1}",
+                fileName, string.IsNullOrWhiteSpace(seriesName) ? authorName : $"{authorName}/{seriesName}");
         }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Drive folder helpers
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Resolves (creating as needed) the path Books/{author}[/{series}]
+        /// and returns the ID of the innermost folder.
+        /// </summary>
+        private string ResolveTargetFolder(string authorName, string seriesName, string accessToken)
+        {
+            var booksRootId = GetOrCreateFolder("Books", null, accessToken);
+            var authorFolderId = GetOrCreateFolder(SanitizeFolderName(authorName ?? "Unknown Author"), booksRootId, accessToken);
+
+            if (!string.IsNullOrWhiteSpace(seriesName))
+            {
+                return GetOrCreateFolder(SanitizeFolderName(seriesName), authorFolderId, accessToken);
+            }
+
+            return authorFolderId;
+        }
+
+        /// <summary>
+        /// Returns the Drive folder ID for a folder with the given name under parentId
+        /// (or at root if parentId is null). Creates the folder if it does not exist.
+        /// </summary>
+        private string GetOrCreateFolder(string name, string parentId, string accessToken)
+        {
+            // Search for existing folder
+            var parentClause = parentId != null ? $"'{parentId}' in parents and " : "";
+            var query = $"{parentClause}name={JsonSerializer.Serialize(name)} and mimeType='application/vnd.google-apps.folder' and trashed=false";
+            var searchUrl = $"{DriveFilesUrl}?q={Uri.EscapeDataString(query)}&fields=files(id)&spaces=drive";
+
+            var searchReq = new HttpRequest(searchUrl);
+            searchReq.Headers.Add("Authorization", $"Bearer {accessToken}");
+            searchReq.SuppressHttpError = true;
+            var searchResp = _httpClient.Execute(searchReq);
+
+            if (!searchResp.HasHttpError)
+            {
+                var searchJson = JsonSerializer.Deserialize<JsonElement>(searchResp.Content);
+                if (searchJson.TryGetProperty("files", out var files) && files.GetArrayLength() > 0)
+                {
+                    return files[0].GetProperty("id").GetString();
+                }
+            }
+
+            // Create folder
+            var parentsJson = parentId != null ? $"[\"{parentId}\"]" : "[]";
+            var createBody = $"{{\"name\":{JsonSerializer.Serialize(name)},\"mimeType\":\"application/vnd.google-apps.folder\",\"parents\":{parentsJson}}}";
+
+            var createReq = new HttpRequest(DriveFilesUrl)
+            {
+                Method = HttpMethod.Post
+            };
+            createReq.Headers.Add("Authorization", $"Bearer {accessToken}");
+            createReq.SetContent(createBody);
+            createReq.Headers.ContentType = "application/json";
+
+            var createResp = _httpClient.Execute(createReq);
+
+            if (createResp.HasHttpError)
+            {
+                throw new Exception($"Failed to create Google Drive folder '{name}': {createResp.Content?.Substring(0, Math.Min(createResp.Content?.Length ?? 0, 300))}");
+            }
+
+            var createJson = JsonSerializer.Deserialize<JsonElement>(createResp.Content);
+            return createJson.GetProperty("id").GetString();
+        }
+
+        private static string SanitizeFolderName(string name)
+        {
+            // Drive accepts most characters; just remove control characters and trim
+            return (name ?? "Unknown").Trim()
+                .Replace('\n', ' ')
+                .Replace('\r', ' ')
+                .Replace('\t', ' ');
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // OAuth2
+        // ─────────────────────────────────────────────────────────────────────
 
         private string GetAccessToken(GooglePlayBooksSettings settings)
         {
