@@ -203,10 +203,15 @@ namespace NzbDrone.Core.Indexers.ZLibrary
                 !string.IsNullOrWhiteSpace(userId) &&
                 !string.IsNullOrWhiteSpace(userKey))
             {
+                // EAPI endpoints (/eapi/...) use remix-userid / remix-userkey request headers.
+                // The /dl/ download endpoint is a web page that requires cookie-based auth
+                // with the same credentials under names remix_userid / remix_userkey.
+                // Send both so the headers work for all Z-Library URLs.
                 return new Dictionary<string, string>
                 {
                     { "remix-userid", userId },
-                    { "remix-userkey", userKey }
+                    { "remix-userkey", userKey },
+                    { "Cookie", $"remix_userid={userId}; remix_userkey={userKey}" }
                 };
             }
 

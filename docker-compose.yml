@@ -8,6 +8,7 @@ services:
     volumes:
       - ./config:/config
       - /books:/books
+      - /downloads:/downloads
     restart: unless-stopped
     environment:
       - PUID=1000

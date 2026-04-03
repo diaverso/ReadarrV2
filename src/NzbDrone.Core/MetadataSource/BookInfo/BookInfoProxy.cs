@@ -19,8 +19,10 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Http;
 using NzbDrone.Core.MediaCover;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.MetadataSource.OpenLibrary;
+using NzbDrone.Core.Parser;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace NzbDrone.Core.MetadataSource.BookInfo
@@ -79,6 +81,24 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private bool UseOpenLibrary => _configService.MetadataSource?.Trim().ToLowerInvariant() == "openlibrary";
 
+        private IsoLanguage GetPreferredLanguage()
+        {
+            var uiLang = _configService.UILanguage;
+            if (uiLang <= 1)
+            {
+                return null; // English or Unknown — no edition language preference
+            }
+
+            try
+            {
+                return IsoLanguages.Get(Language.FindById(uiLang));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public HashSet<string> GetChangedAuthors(DateTime startTime)
         {
             if (UseOpenLibrary)
@@ -121,11 +141,37 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 return PollAuthorUncached(foreignAuthorId);
             }
-            catch (BookInfoException e)
+            catch (AuthorNotFoundException)
             {
-                _logger.Warn(e, "Unexpected error getting author info: {foreignAuthorId}", foreignAuthorId);
-                throw;
+                throw; // Definitively not found — skip fallback
             }
+            catch (Exception e)
+            {
+                _logger.Warn(e, "BookInfo failed for author {0}, trying OpenLibrary fallback", foreignAuthorId);
+                return OpenLibraryFallbackAuthor(foreignAuthorId);
+            }
+        }
+
+        private Author OpenLibraryFallbackAuthor(string foreignAuthorId)
+        {
+            var dbAuthor = _authorService.FindById(foreignAuthorId);
+            var name = dbAuthor?.Metadata?.Value?.Name;
+
+            if (name.IsNullOrWhiteSpace())
+            {
+                throw new AuthorNotFoundException(foreignAuthorId);
+            }
+
+            _logger.Info("OpenLibrary fallback: searching for author '{0}'", name);
+
+            var results = _openLibraryProxy.SearchForNewAuthor(name);
+
+            if (!results.Any())
+            {
+                throw new AuthorNotFoundException(foreignAuthorId);
+            }
+
+            return results.First();
         }
 
         public HashSet<string> GetChangedBooks(DateTime startTime)
@@ -149,11 +195,42 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 return PollBook(foreignBookId);
             }
-            catch (BookInfoException e)
+            catch (BookNotFoundException)
             {
-                _logger.Warn(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId);
-                throw;
+                throw; // Definitively not found — skip fallback
             }
+            catch (Exception e)
+            {
+                _logger.Warn(e, "BookInfo failed for book {0}, trying OpenLibrary fallback", foreignBookId);
+                return OpenLibraryFallbackBook(foreignBookId);
+            }
+        }
+
+        private Tuple<string, Book, List<AuthorMetadata>> OpenLibraryFallbackBook(string foreignBookId)
+        {
+            var dbBook = _bookService.FindById(foreignBookId);
+            var title = dbBook?.Title;
+            var authorName = dbBook?.Author?.Value?.Metadata?.Value?.Name;
+
+            if (title.IsNullOrWhiteSpace())
+            {
+                throw new BookNotFoundException(foreignBookId);
+            }
+
+            _logger.Info("OpenLibrary fallback: searching for '{0}' by '{1}'", title, authorName);
+
+            var results = _openLibraryProxy.SearchForNewBook(title, authorName);
+
+            if (!results.Any())
+            {
+                throw new BookNotFoundException(foreignBookId);
+            }
+
+            var book = results.First();
+            var metadata = book.Author?.Value?.Metadata?.Value
+                ?? new AuthorMetadata { ForeignAuthorId = foreignBookId, Name = authorName ?? "Unknown" };
+
+            return Tuple.Create(metadata.ForeignAuthorId, book, new List<AuthorMetadata> { metadata });
         }
 
         public List<object> SearchForNewEntity(string title)
@@ -584,7 +661,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             foreach (var work in resource.Works)
             {
-                var book = MapBook(work);
+                var book = MapBook(work, GetPreferredLanguage());
                 var authorId = work.Books.OrderByDescending(b => b.AverageRating * b.RatingCount).First().Contributors.First().ForeignId.ToString();
 
                 AddDbIds(authorId, book, authors);
@@ -717,7 +794,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 throw new BookInfoException($"Failed to get works for {foreignAuthorId}");
             }
 
-            return MapAuthor(resource);
+            return MapAuthor(resource, GetPreferredLanguage());
         }
 
         private Tuple<string, Book, List<AuthorMetadata>> PollBook(string foreignBookId)
@@ -800,7 +877,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 throw new BookInfoException($"Failed to get books for {foreignBookId}");
             }
 
-            var book = MapBook(resource);
+            var book = MapBook(resource, GetPreferredLanguage());
             var authorId = GetAuthorId(resource).ToString();
             var metadata = resource.Authors.Select(MapAuthorMetadata).ToList();
 
@@ -862,13 +939,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return metadata;
         }
 
-        private static Author MapAuthor(AuthorResource resource)
+        private static Author MapAuthor(AuthorResource resource, IsoLanguage preferredLang = null)
         {
             var metadata = MapAuthorMetadata(resource);
 
             var books = resource.Works
                 .Where(x => x.ForeignId > 0 && GetAuthorId(x) == resource.ForeignId)
-                .Select(MapBook)
+                .Select(w => MapBook(w, preferredLang))
                 .ToList();
 
             books.ForEach(x => x.AuthorMetadata = metadata);
@@ -932,7 +1009,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return series;
         }
 
-        private static Book MapBook(WorkResource resource)
+        private static Book MapBook(WorkResource resource, IsoLanguage preferredLang = null)
         {
             var book = new Book
             {
@@ -951,14 +1028,32 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 book.Editions = resource.Books.Select(x => MapEdition(x)).ToList();
 
-                // monitor the most popular release
-                var mostPopular = book.Editions.Value.MaxBy(x => x.Ratings.Popularity);
-                if (mostPopular != null)
+                // Try to find an edition in the preferred UI language
+                Edition preferredEdition = null;
+                if (preferredLang != null)
                 {
-                    mostPopular.Monitored = true;
+                    preferredEdition = book.Editions.Value.FirstOrDefault(e =>
+                        !e.Language.IsNullOrWhiteSpace() &&
+                        (e.Language.Equals(preferredLang.TwoLetterCode, StringComparison.OrdinalIgnoreCase) ||
+                         e.Language.Equals(preferredLang.ThreeLetterCode, StringComparison.OrdinalIgnoreCase) ||
+                         e.Language.StartsWith(preferredLang.EnglishName, StringComparison.OrdinalIgnoreCase)));
+                }
 
-                    // fix work title if missing
-                    if (book.Title.IsNullOrWhiteSpace())
+                // Monitor preferred-language edition; fall back to most popular
+                var mostPopular = book.Editions.Value.MaxBy(x => x.Ratings.Popularity);
+                var monitoredEdition = preferredEdition ?? mostPopular;
+
+                if (monitoredEdition != null)
+                {
+                    monitoredEdition.Monitored = true;
+
+                    if (preferredEdition != null && !preferredEdition.Title.IsNullOrWhiteSpace())
+                    {
+                        // Show title in the user's preferred language
+                        book.Title = preferredEdition.Title;
+                        book.CleanTitle = Parser.Parser.CleanAuthorName(preferredEdition.Title);
+                    }
+                    else if (book.Title.IsNullOrWhiteSpace())
                     {
                         book.Title = mostPopular.Title;
                     }

@@ -18,12 +18,12 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
 
         public AnnasArchiveSettings()
         {
-            BaseUrl = "https://annas-archive.gl";
+            BaseUrl = "https://annas-archive.gd";
             Formats = "epub,pdf,mobi,azw3";
             Languages = "";
         }
 
-        [FieldDefinition(0, Label = "URL", Advanced = true, HelpText = "Anna's Archive base URL. Change only if using a mirror.")]
+        [FieldDefinition(0, Label = "URL", Advanced = true, HelpText = "Anna's Archive base URL. Working domains: annas-archive.gd, annas-archive.org, annas-archive.se, annas-archive.li")]
         public string BaseUrl { get; set; }
 
         [FieldDefinition(1, Label = "Formats", HelpText = "Comma-separated file formats to search (epub,pdf,mobi,azw3).", Advanced = true)]

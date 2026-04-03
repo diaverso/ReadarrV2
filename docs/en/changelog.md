@@ -4,6 +4,80 @@ This document tracks changes made in the community-maintained fork after the ori
 
 ---
 
+## [Unreleased] — 2026-04-03 (latest)
+
+### Added
+
+#### Metadata — Language-Preferred Edition Selection
+- When the UI language is set to a non-English language (e.g. Spanish), `BookInfoProxy` now selects the edition in that language as the **monitored edition** instead of the most popular one
+- The book title displayed in the author's book list is updated to the preferred-language edition's title when a match exists (e.g. "El pájaro y el corazón de piedra" instead of the English work title)
+- Language matching is case-insensitive and checks the edition's language field against the ISO 639-1 two-letter code, ISO 639-2 three-letter code, and English name (e.g. "es", "spa", "Spanish")
+- Falls back to the most popular edition (previous behavior) when no edition in the preferred language is found
+
+#### Metadata — OpenLibrary Automatic Fallback
+- `BookInfoProxy` now automatically falls back to **Open Library** when BookInfo (GoodReads) returns an unexpected error for an author or book refresh
+- Fallback for `GetAuthorInfo`: looks up the author's name from the local database and searches Open Library by name
+- Fallback for `GetBookInfo`: looks up the book title and author name from the local database and searches Open Library by title + author
+- `AuthorNotFoundException` and `BookNotFoundException` (404 responses) are not retried — they are propagated immediately
+- OpenLibrary continues to be available as the primary source by setting `MetadataSource = "openlibrary"` in Settings
+
+#### Notifications — Google Play Books
+- Switched upload backend from the deprecated Books API `useruploadedbooks` endpoint (returns 404) to the **Google Drive API** (`/upload/drive/v3/files?uploadType=multipart`)
+- Books uploaded to Google Drive in the user's account automatically appear in Google Play Books
+- Pre-upload connectivity probe against `GET /drive/v3/about?fields=user` — returns a clear error message if the Drive API is not enabled or the token lacks the required scope
+- Required OAuth2 scope changed from `https://www.googleapis.com/auth/books` to `https://www.googleapis.com/auth/drive.file`
+- `get_google_refresh_token.py` helper script updated to request `drive.file` scope
+
+#### Download Client — HTTP Blackhole (FlareSolverr)
+- New optional **FlareSolverr URL** field in the HTTP Download client settings
+- When configured, FlareSolverr is tried first to bypass DDoS-Guard / Cloudflare challenges; falls back to the built-in PoW solver if FlareSolverr is unavailable or returns an error
+
+### Fixed
+
+#### Download Client — HTTP Blackhole
+- **UTF-8 filenames**: Content-Disposition header parser now correctly handles RFC 5987 `filename*=charset'language'value` encoding — fixes garbled filenames like `pÃ¡jaro.epub` → `pájaro.epub`
+- **Multi-hop URL resolution**: Replaced the single-pass content-type check with a loop (up to 4 hops) that re-evaluates `Content-Type` on every response — fixes Z-Library's JSON → HTML → binary chain
+- **Z-Library `.bin` downloads**: The `/dl/` web endpoint requires cookie-based auth (`remix_userid` / `remix_userkey`); auth headers now also set the `Cookie:` header — fixes HTML login page being saved as `.bin`
+
+---
+
+## [Unreleased] — 2026-04-03
+
+### Added
+
+#### Google Play Books Connection
+- New **Google Play Books** notification/connection: automatically uploads imported EPUB and PDF files to the user's personal Google Play Books library
+- Authentication via OAuth2 (Client ID + Client Secret + Refresh Token from Google Cloud Console with Books API enabled)
+- Skips unsupported formats (MOBI, AZW3, etc.) with a debug log — only EPUB and PDF are accepted by Google Play Books
+- Upload errors are logged per-file and do not block other files from uploading
+
+#### Anna's Archive Indexer
+- New indexer for Anna's Archive — scrapes the search page HTML and extracts results using the site's CSS selectors (`div.flex.pt-3.pb-3.border-b`, `a.js-vim-focus`, `div.text-gray-800.font-semibold.text-sm`)
+- Parses format, file size, and language from the metadata bar (separated by `·`)
+- MD5-based deduplication to avoid duplicate results
+- Fallback to simple `/md5/` link scan if block-based parsing yields no results
+- **API Key** field (Advanced): when a member API key is provided, uses `/dyn/api/fast_download.json` to resolve direct download URLs instead of the DDoS-protected slow download page
+- Default URL set to `https://annas-archive.gd` — working mirrors: `annas-archive.gd`, `annas-archive.org`, `annas-archive.se`, `annas-archive.li`
+
+#### Docker / Deployment
+- Dockerfile rewritten as a 3-stage multi-stage build: Node.js frontend build → .NET backend build → runtime image. A fresh `docker compose up` now builds everything from source with no manual pre-steps required
+- `entrypoint.sh`: on first start, waits for Readarr to be ready and automatically creates "Download z-Library" and "Download Annas Archive" HTTP Download clients pointing to `/downloads`
+- `docker-compose.yml`: added `/downloads:/downloads` volume mount
+- `tsconfig.json` added to the Docker build context (required by `ForkTsCheckerWebpackPlugin` during webpack build)
+
+#### HTTP Download Client
+- Default download folder changed to `/downloads`
+
+### Fixed
+
+#### Anna's Archive Indexer
+- Removed `output=json` parameter from search requests (ignored by the site — always returns HTML)
+- Changed `HttpAccept` from `Json` to `Html`
+- Fixed `ParseSize` to handle sizes without a space between number and unit (e.g. `15.0MB`)
+- Default URL corrected from the defunct `annas-archive.gl` to `annas-archive.gd`
+
+---
+
 ## [Unreleased] — 2026-04-01
 
 ### Added

@@ -18,14 +18,39 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
         private readonly IHttpClient _httpClient;
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-        // Fallback HTML parser: extracts /md5/HASH links and surrounding metadata
+        // Matches each search result block: <div class="flex pt-3 pb-3 border-b ...">
+        private static readonly Regex ResultBlockRegex = new Regex(
+            @"<div[^>]+class=""[^""]*\bflex\b[^""]*\bpt-3\b[^""]*\bpb-3\b[^""]*\bborder-b\b[^""]*""[^>]*>(.*?)(?=<div[^>]+class=""[^""]*\bflex\b[^""]*\bpt-3\b[^""]*\bpb-3\b[^""]*\bborder-b\b|$)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
+
+        // MD5 hash from href="/md5/HASH"
         private static readonly Regex Md5LinkRegex = new Regex(
-            @"href=""/md5/([a-f0-9]{32})""",
+            @"href=""(/md5/([a-f0-9]{32})(?:[^""]*))""",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        // Metadata pattern: "Author, Publisher, Year, lang, ext, size"
-        private static readonly Regex MetaRegex = new Regex(
-            @"(?<year>\d{4})[,\s]+(?<lang>[a-z]{2,3})[,\s]+(?<ext>epub|pdf|mobi|azw3|djvu|fb2|doc|rtf)[,\s]+(?<size>[\d.,]+ (?:KB|MB|kB|Mb|Gb|B))",
+        // Title from <a class="js-vim-focus ...">TITLE</a>
+        private static readonly Regex TitleRegex = new Regex(
+            @"<a[^>]+class=""[^""]*\bjs-vim-focus\b[^""]*""[^>]*>\s*(.*?)\s*</a>",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
+
+        // Metadata div: <div class="... text-gray-800 font-semibold text-sm ...">FORMAT · SIZE · [LANG]</div>
+        private static readonly Regex MetaDivRegex = new Regex(
+            @"<div[^>]+class=""[^""]*\btext-gray-800\b[^""]*\bfont-semibold\b[^""]*\btext-sm\b[^""]*""[^>]*>(.*?)</div>",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
+
+        // Language in brackets: [en] or [es]
+        private static readonly Regex LangRegex = new Regex(
+            @"\[([a-z]{2,5})\]",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        // File size: 1.2 MB, 500 KB, etc.
+        private static readonly Regex SizeRegex = new Regex(
+            @"([\d.,]+\s*(?:B|KB|MB|GB|KiB|MiB|GiB))",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        // Known file formats
+        private static readonly Regex FormatRegex = new Regex(
+            @"\b(epub|pdf|mobi|azw3|djvu|fb2|doc|rtf|cbz|cbr)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public AnnasArchiveParser(AnnasArchiveSettings settings, IHttpClient httpClient = null)
@@ -109,30 +134,116 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
         private IList<ReleaseInfo> ParseHtml(string html)
         {
             var results = new List<ReleaseInfo>();
-            var matches = Md5LinkRegex.Matches(html);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (Match match in matches)
+            // Try block-based parsing first (uses correct CSS selectors from Anna's Archive HTML)
+            var blocks = ResultBlockRegex.Matches(html);
+            if (blocks.Count > 0)
             {
-                var md5 = match.Groups[1].Value;
-                var surroundingText = ExtractSurroundingText(html, match.Index, 500);
-                var (title, author, year, lang, ext, size) = ParseSurroundingText(surroundingText);
-
-                var release = new ReleaseInfo
+                foreach (Match block in blocks)
                 {
-                    Guid = $"AnnasArchive-{md5}",
-                    Title = BuildTitle(title, author, year, ext, lang),
-                    Author = author,
-                    Book = title,
-                    DownloadUrl = BuildDownloadUrl(md5),
-                    InfoUrl = $"{_settings.BaseUrl.TrimEnd('/')}/md5/{md5}",
-                    Size = size,
-                    DownloadProtocol = DownloadProtocol.Unknown,
-                    PublishDate = year > 0 ? new DateTime(year, 1, 1) : DateTime.UtcNow,
-                };
+                    var blockHtml = block.Groups[1].Value;
+                    var md5Match = Md5LinkRegex.Match(blockHtml);
+                    if (!md5Match.Success)
+                    {
+                        continue;
+                    }
 
-                results.Add(release);
+                    var md5 = md5Match.Groups[2].Value;
+                    if (!seen.Add(md5))
+                    {
+                        continue;
+                    }
+
+                    var title = string.Empty;
+                    var titleMatch = TitleRegex.Match(blockHtml);
+                    if (titleMatch.Success)
+                    {
+                        title = WebUtility.HtmlDecode(Regex.Replace(titleMatch.Groups[1].Value, @"<[^>]+>", " ").Trim());
+                    }
+
+                    var ext = string.Empty;
+                    var lang = string.Empty;
+                    long size = 0;
+
+                    var metaMatch = MetaDivRegex.Match(blockHtml);
+                    if (metaMatch.Success)
+                    {
+                        var metaText = WebUtility.HtmlDecode(Regex.Replace(metaMatch.Groups[1].Value, @"<[^>]+>", " "));
+                        var segments = metaText.Split('·');
+                        foreach (var seg in segments)
+                        {
+                            var s = seg.Trim();
+                            if (string.IsNullOrWhiteSpace(s))
+                            {
+                                continue;
+                            }
+
+                            var fmtMatch = FormatRegex.Match(s);
+                            if (fmtMatch.Success && string.IsNullOrEmpty(ext))
+                            {
+                                ext = fmtMatch.Value.ToLowerInvariant();
+                                continue;
+                            }
+
+                            var sizeMatch = SizeRegex.Match(s);
+                            if (sizeMatch.Success && size == 0)
+                            {
+                                size = ParseSize(sizeMatch.Value);
+                                continue;
+                            }
+
+                            var langMatch = LangRegex.Match(s);
+                            if (langMatch.Success && string.IsNullOrEmpty(lang))
+                            {
+                                lang = langMatch.Groups[1].Value;
+                            }
+                        }
+                    }
+
+                    results.Add(new ReleaseInfo
+                    {
+                        Guid = $"AnnasArchive-{md5}",
+                        Title = BuildTitle(title, string.Empty, 0, ext, lang),
+                        Book = title,
+                        DownloadUrl = BuildDownloadUrl(md5),
+                        InfoUrl = $"{_settings.BaseUrl.TrimEnd('/')}/md5/{md5}",
+                        Size = size,
+                        DownloadProtocol = DownloadProtocol.Unknown,
+                        PublishDate = DateTime.UtcNow,
+                    });
+                }
+
+                if (results.Count > 0)
+                {
+                    Logger.Debug("Anna's Archive HTML parser found {0} results via block matching", results.Count);
+                    return results;
+                }
             }
 
+            // Fallback: find any /md5/ links anywhere in the page
+            Logger.Debug("Anna's Archive block regex found no results, falling back to simple MD5 scan");
+            var allMd5 = Md5LinkRegex.Matches(html);
+            foreach (Match match in allMd5)
+            {
+                var md5 = match.Groups[2].Value;
+                if (!seen.Add(md5))
+                {
+                    continue;
+                }
+
+                results.Add(new ReleaseInfo
+                {
+                    Guid = $"AnnasArchive-{md5}",
+                    Title = $"Unknown - {md5}",
+                    DownloadUrl = BuildDownloadUrl(md5),
+                    InfoUrl = $"{_settings.BaseUrl.TrimEnd('/')}/md5/{md5}",
+                    DownloadProtocol = DownloadProtocol.Unknown,
+                    PublishDate = DateTime.UtcNow,
+                });
+            }
+
+            Logger.Debug("Anna's Archive HTML fallback found {0} MD5 links", results.Count);
             return results;
         }
 
@@ -230,37 +341,10 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
             return $"{_settings.BaseUrl.TrimEnd('/')}/md5/{md5}";
         }
 
-        private static string ExtractSurroundingText(string html, int position, int length)
-        {
-            var start = Math.Max(0, position - 50);
-            var end = Math.Min(html.Length, position + length);
-            return html.Substring(start, end - start);
-        }
 
-        private static (string title, string author, int year, string lang, string ext, long size) ParseSurroundingText(string text)
-        {
-            // Strip HTML tags
-            var clean = Regex.Replace(text, @"<[^>]+>", " ");
-            clean = WebUtility.HtmlDecode(clean);
-            clean = Regex.Replace(clean, @"\s+", " ").Trim();
-
-            var metaMatch = MetaRegex.Match(clean);
-
-            var year = 0;
-            var lang = string.Empty;
-            var ext = string.Empty;
-            long size = 0;
-
-            if (metaMatch.Success)
-            {
-                int.TryParse(metaMatch.Groups["year"].Value, out year);
-                lang = metaMatch.Groups["lang"].Value;
-                ext = metaMatch.Groups["ext"].Value;
-                size = ParseSize(metaMatch.Groups["size"].Value);
-            }
-
-            return (string.Empty, string.Empty, year, lang, ext, size);
-        }
+        private static readonly Regex SizeParseRegex = new Regex(
+            @"^([\d.,]+)\s*(B|KB|MB|GB|KiB|MiB|GiB)$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static long ParseSize(string sizeStr)
         {
@@ -269,17 +353,17 @@ namespace NzbDrone.Core.Indexers.AnnasArchive
                 return 0;
             }
 
-            var parts = sizeStr.Trim().Split(' ');
-            if (parts.Length < 2 || !double.TryParse(parts[0].Replace(",", "."), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value))
+            var m = SizeParseRegex.Match(sizeStr.Trim());
+            if (!m.Success || !double.TryParse(m.Groups[1].Value.Replace(",", "."), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value))
             {
                 return 0;
             }
 
-            return parts[1].ToUpperInvariant() switch
+            return m.Groups[2].Value.ToUpperInvariant() switch
             {
-                "KB" or "KB" => (long)(value * 1024),
-                "MB" or "MB" => (long)(value * 1024 * 1024),
-                "GB" or "GB" => (long)(value * 1024 * 1024 * 1024),
+                "KB" or "KIB" => (long)(value * 1024),
+                "MB" or "MIB" => (long)(value * 1024 * 1024),
+                "GB" or "GIB" => (long)(value * 1024 * 1024 * 1024),
                 _ => (long)value,
             };
         }

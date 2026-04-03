@@ -186,6 +186,8 @@ class AuthorDetailsSeries extends Component {
                             columns={columns}
                             {...item}
                             position={positionMap[item.id]}
+                            isEditorActive={false}
+                            onSelectedChange={() => {}}
                             onMonitorBookPress={this.onMonitorBookPress}
                           />
                         );

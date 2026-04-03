@@ -4,6 +4,80 @@ Este documento registra los cambios realizados en el fork mantenido por la comun
 
 ---
 
+## [No publicado] — 2026-04-03 (más reciente)
+
+### Añadido
+
+#### Metadatos — Selección de Edición por Idioma Preferido
+- Cuando el idioma de la UI es distinto del inglés (p.ej. español), `BookInfoProxy` ahora selecciona como **edición monitorizada** la edición en ese idioma, en lugar de la más popular
+- El título del libro mostrado en la lista de libros del autor se actualiza al título de la edición en el idioma preferido cuando existe una coincidencia (p.ej. "El pájaro y el corazón de piedra" en lugar del título en inglés de la obra)
+- La comparación de idioma es insensible a mayúsculas y comprueba el campo de idioma de la edición contra el código ISO 639-1 de dos letras, el código ISO 639-2 de tres letras y el nombre en inglés (p.ej. "es", "spa", "Spanish")
+- Si no se encuentra ninguna edición en el idioma preferido, se mantiene el comportamiento anterior (edición más popular)
+
+#### Metadatos — Fallback Automático a OpenLibrary
+- `BookInfoProxy` ahora recurre automáticamente a **Open Library** cuando BookInfo (GoodReads) devuelve un error inesperado al actualizar un autor o un libro
+- Fallback para `GetAuthorInfo`: busca el nombre del autor en la base de datos local y lo busca en Open Library por nombre
+- Fallback para `GetBookInfo`: busca el título y nombre del autor en la base de datos local y busca en Open Library por título + autor
+- Las excepciones `AuthorNotFoundException` y `BookNotFoundException` (respuestas 404) no se reintentan — se propagan inmediatamente
+- Open Library sigue disponible como fuente primaria configurando `MetadataSource = "openlibrary"` en Ajustes
+
+#### Notificaciones — Google Play Books
+- Cambiado el backend de subida del endpoint deprecated de la Books API `useruploadedbooks` (devuelve 404) a la **API de Google Drive** (`/upload/drive/v3/files?uploadType=multipart`)
+- Los libros subidos a Google Drive en la cuenta del usuario aparecen automáticamente en Google Play Libros
+- Sonda de conectividad previa a la subida contra `GET /drive/v3/about?fields=user` — devuelve un mensaje de error claro si la API de Drive no está habilitada o el token no tiene el scope requerido
+- Scope OAuth2 requerido cambiado de `https://www.googleapis.com/auth/books` a `https://www.googleapis.com/auth/drive.file`
+- Script helper `get_google_refresh_token.py` actualizado para solicitar el scope `drive.file`
+
+#### Cliente de Descarga — HTTP Blackhole (FlareSolverr)
+- Nuevo campo opcional **FlareSolverr URL** en la configuración del cliente de descarga HTTP
+- Cuando está configurado, FlareSolverr se prueba primero para saltarse los retos de DDoS-Guard / Cloudflare; si FlareSolverr no está disponible o devuelve error, se usa el solucionador PoW integrado
+
+### Corregido
+
+#### Cliente de Descarga — HTTP Blackhole
+- **Nombres de archivo UTF-8**: el parser de la cabecera Content-Disposition ahora maneja correctamente la codificación RFC 5987 `filename*=charset'language'value` — corrige nombres de archivo corruptos como `pÃ¡jaro.epub` → `pájaro.epub`
+- **Resolución de URLs en múltiples saltos**: reemplazado el chequeo de tipo de contenido de un solo paso por un bucle de hasta 4 saltos que re-evalúa `Content-Type` en cada respuesta — corrige la cadena JSON → HTML → binario de Z-Library
+- **Descargas `.bin` de Z-Library**: el endpoint web `/dl/` requiere autenticación por cookie (`remix_userid` / `remix_userkey`); las cabeceras de autenticación ahora también establecen la cabecera `Cookie:` — corrige que se guardara la página de login HTML como `.bin`
+
+---
+
+## [No publicado] — 2026-04-03
+
+### Añadido
+
+#### Conexión Google Play Libros
+- Nueva conexión/notificación **Google Play Books**: sube automáticamente los archivos EPUB y PDF importados a la biblioteca personal de Google Play Libros del usuario
+- Autenticación mediante OAuth2 (Client ID + Client Secret + Refresh Token de Google Cloud Console con la API de Books habilitada)
+- Omite formatos no compatibles (MOBI, AZW3, etc.) con un mensaje de debug — Google Play Libros solo acepta EPUB y PDF
+- Los errores de subida se registran por archivo y no bloquean la subida del resto de archivos
+
+#### Indexer Anna's Archive
+- Nuevo indexer para Anna's Archive — extrae resultados del HTML de la página de búsqueda usando los selectores CSS del sitio (`div.flex.pt-3.pb-3.border-b`, `a.js-vim-focus`, `div.text-gray-800.font-semibold.text-sm`)
+- Parsea formato, tamaño de archivo e idioma desde la barra de metadatos (separada por `·`)
+- Deduplicación por MD5 para evitar resultados duplicados
+- Fallback a escaneo simple de enlaces `/md5/` si el parseo por bloques no da resultados
+- Campo **API Key** (Avanzado): cuando se proporciona una API key de miembro, usa `/dyn/api/fast_download.json` para resolver URLs de descarga directa en lugar de la página de descarga lenta protegida por DDoS-Guard
+- URL por defecto establecida en `https://annas-archive.gd` — mirrors funcionales: `annas-archive.gd`, `annas-archive.org`, `annas-archive.se`, `annas-archive.li`
+
+#### Docker / Despliegue
+- Dockerfile reescrito como build multi-etapa de 3 fases: build frontend con Node.js → build backend con .NET → imagen runtime. Un `docker compose up` desde cero ahora compila todo desde el código fuente sin pasos manuales previos
+- `entrypoint.sh`: en el primer arranque, espera a que Readarr esté listo y crea automáticamente los clientes de descarga HTTP "Download z-Library" y "Download Annas Archive" apuntando a `/downloads`
+- `docker-compose.yml`: añadido volumen `/downloads:/downloads`
+- `tsconfig.json` añadido al contexto de build de Docker (requerido por `ForkTsCheckerWebpackPlugin` durante el build de webpack)
+
+#### Cliente de Descarga HTTP
+- Carpeta de descarga por defecto cambiada a `/downloads`
+
+### Corregido
+
+#### Indexer Anna's Archive
+- Eliminado el parámetro `output=json` de las peticiones de búsqueda (ignorado por el sitio — siempre devuelve HTML)
+- Cambiado `HttpAccept` de `Json` a `Html`
+- Corregido `ParseSize` para manejar tamaños sin espacio entre número y unidad (p.ej. `15.0MB`)
+- URL por defecto corregida del dominio inactivo `annas-archive.gl` a `annas-archive.gd`
+
+---
+
 ## [No publicado] — 2026-04-01
 
 ### Añadido
