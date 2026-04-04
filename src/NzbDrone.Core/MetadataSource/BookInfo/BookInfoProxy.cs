@@ -946,6 +946,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var books = resource.Works
                 .Where(x => x.ForeignId > 0 && GetAuthorId(x) == resource.ForeignId)
                 .Select(w => MapBook(w, preferredLang))
+                .Where(b => b != null)
                 .ToList();
 
             books.ForEach(x => x.AuthorMetadata = metadata);
@@ -1041,6 +1042,19 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 // Monitor preferred-language edition; fall back to most popular
                 var mostPopular = book.Editions.Value.MaxBy(x => x.Ratings.Popularity);
+
+                // Skip works whose most popular edition is in an unwanted foreign language
+                // (e.g. Dutch, Swedish, Finnish, French, Italian) when no preferred edition exists
+                if (preferredEdition == null && mostPopular != null)
+                {
+                    var lang = mostPopular.Language?.ToLowerInvariant() ?? "";
+                    var acceptableFallback = new[] { "", "eng", "en" };
+                    if (!acceptableFallback.Contains(lang))
+                    {
+                        return null;
+                    }
+                }
+
                 var monitoredEdition = preferredEdition ?? mostPopular;
 
                 if (monitoredEdition != null)
