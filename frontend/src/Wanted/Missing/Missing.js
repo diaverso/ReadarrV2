@@ -16,6 +16,7 @@ import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptions
 import TablePager from 'Components/Table/TablePager';
 import { align, icons, kinds } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
+import UploadModal from 'Upload/UploadModal';
 import getFilterValue from 'Utilities/Filter/getFilterValue';
 import hasDifferentItems from 'Utilities/Object/hasDifferentItems';
 import translate from 'Utilities/String/translate';
@@ -48,7 +49,8 @@ class Missing extends Component {
       lastToggled: null,
       selectedState: {},
       isConfirmSearchAllMissingModalOpen: false,
-      isInteractiveImportModalOpen: false
+      isInteractiveImportModalOpen: false,
+      isUploadModalOpen: false
     };
   }
 
@@ -116,6 +118,14 @@ class Missing extends Component {
     this.setState({ isInteractiveImportModalOpen: false });
   };
 
+  onUploadPress = () => {
+    this.setState({ isUploadModalOpen: true });
+  };
+
+  onUploadModalClose = () => {
+    this.setState({ isUploadModalOpen: false });
+  };
+
   //
   // Render
 
@@ -142,7 +152,8 @@ class Missing extends Component {
       allUnselected,
       selectedState,
       isConfirmSearchAllMissingModalOpen,
-      isInteractiveImportModalOpen
+      isInteractiveImportModalOpen,
+      isUploadModalOpen
     } = this.state;
 
     const isAllPopulated = isPopulated && isAuthorPopulated;
@@ -186,6 +197,12 @@ class Missing extends Component {
               label={translate('ManualImport')}
               iconName={icons.INTERACTIVE}
               onPress={this.onInteractiveImportPress}
+            />
+
+            <PageToolbarButton
+              label={translate('UploadFile')}
+              iconName={icons.FILEIMPORT}
+              onPress={this.onUploadPress}
             />
 
           </PageToolbarSection>
@@ -290,6 +307,11 @@ class Missing extends Component {
             isOpen={isInteractiveImportModalOpen}
             onModalClose={this.onInteractiveImportModalClose}
             showReplaceExistingFiles={true}
+          />
+
+          <UploadModal
+            isOpen={isUploadModalOpen}
+            onModalClose={this.onUploadModalClose}
           />
         </PageContentBody>
       </PageContent>

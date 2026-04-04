@@ -1079,6 +1079,7 @@
   "Unmonitored": "Unmonitored",
   "UnmonitoredHelpText": "Include unmonitored books in the iCal feed",
   "UnselectAll": "Unselect All",
+  "UploadFile": "Upload File",
   "UpdateAll": "Update all",
   "UpdateAppDirectlyLoadError": "Unable to update {appName} directly,",
   "UpdateAutomaticallyHelpText": "Automatically download and install updates. You will still be able to install from System: Updates",
