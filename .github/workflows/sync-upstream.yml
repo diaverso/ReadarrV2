@@ -1,0 +1,108 @@
+name: Sync from blampe/Readarr
+
+on:
+  schedule:
+    # Run every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync upstream changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote (blampe/Readarr)
+        run: |
+          git remote add upstream https://github.com/blampe/Readarr.git || true
+          git fetch upstream develop --no-tags
+
+      - name: Check for new upstream commits
+        id: check
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/develop)
+          MERGE_BASE=$(git merge-base HEAD upstream/develop)
+
+          echo "upstream_sha=$UPSTREAM_SHA" >> $GITHUB_OUTPUT
+          echo "merge_base=$MERGE_BASE" >> $GITHUB_OUTPUT
+
+          if [ "$UPSTREAM_SHA" = "$MERGE_BASE" ]; then
+            echo "has_new_commits=false" >> $GITHUB_OUTPUT
+            echo "No new commits from upstream."
+          else
+            COUNT=$(git rev-list $MERGE_BASE..upstream/develop --count)
+            echo "has_new_commits=true" >> $GITHUB_OUTPUT
+            echo "Found $COUNT new commit(s) from upstream."
+          fi
+
+      - name: Create sync branch and PR
+        if: steps.check.outputs.has_new_commits == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="sync/upstream-$(date +%Y%m%d)"
+
+          # Create branch from current main
+          git checkout -b "$BRANCH"
+
+          # Attempt merge
+          if git merge upstream/develop --no-commit --no-ff; then
+            MERGE_STATUS="clean"
+          else
+            MERGE_STATUS="conflicts"
+            # Stage what can be auto-merged
+            git add -A || true
+          fi
+
+          # Commit (even if conflicts, to preserve context in PR)
+          git commit -m "chore: sync changes from blampe/Readarr develop
+
+Upstream SHA: ${{ steps.check.outputs.upstream_sha }}
+Merge status: $MERGE_STATUS
+
+$(git log ${{ steps.check.outputs.merge_base }}..upstream/develop --oneline)" || echo "Nothing to commit"
+
+          git push origin "$BRANCH"
+
+          # Build PR body
+          COMMITS=$(git log ${{ steps.check.outputs.merge_base }}..upstream/develop --oneline)
+          if [ "$MERGE_STATUS" = "conflicts" ]; then
+            CONFLICT_NOTE="⚠️ **This merge has conflicts** — review and resolve before merging."
+          else
+            CONFLICT_NOTE="✅ Clean merge — no conflicts detected."
+          fi
+
+          gh pr create \
+            --title "chore: sync upstream changes from blampe/Readarr ($(date +%Y-%m-%d))" \
+            --body "## Upstream Sync
+
+Automated sync from [blampe/Readarr](https://github.com/blampe/Readarr) develop branch.
+
+$CONFLICT_NOTE
+
+### New upstream commits
+\`\`\`
+$COMMITS
+\`\`\`
+
+### Instructions
+1. Review the diff carefully
+2. Resolve any conflicts if present
+3. Run tests before merging" \
+            --base main \
+            --head "$BRANCH" \
+            --label "upstream-sync" || true
