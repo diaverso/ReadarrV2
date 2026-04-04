@@ -1120,5 +1120,12 @@
     "LastSearched": "Dernière recherche",
     "Unknown": "Inconnu",
     "AddNewAuthorRootFolderHelpText": "Le sous-dossier « {folder} » sera créé automatiquement",
-    "AddRootFolder": "Ajouter un dossier racine"
+    "AddRootFolder": "Ajouter un dossier racine",
+    "Languages": "Langues",
+    "PageCount": "Pages",
+    "Select": "Sélectionner",
+    "Added": "Ajouté",
+    "FileCount": "Fichiers",
+    "Genres": "Genres",
+    "SizeOnDisk": "Taille sur disque"
 }

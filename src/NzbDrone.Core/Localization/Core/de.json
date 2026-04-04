@@ -1120,5 +1120,12 @@
     "LastSearched": "Letzte Suche",
     "Unknown": "Unbekannt",
     "AddRootFolder": "Stammverzeichnis hinzufügen",
-    "AddNewAuthorRootFolderHelpText": "'{folder}' Unterordner wird automatisch erstellt werden"
+    "AddNewAuthorRootFolderHelpText": "'{folder}' Unterordner wird automatisch erstellt werden",
+    "Languages": "Sprachen",
+    "PageCount": "Seiten",
+    "Select": "Auswählen",
+    "Added": "Hinzugefügt",
+    "FileCount": "Dateien",
+    "Genres": "Genres",
+    "SizeOnDisk": "Größe auf Datenträger"
 }

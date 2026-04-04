@@ -967,5 +967,12 @@
     "AddNewAuthorRootFolderHelpText": "A subpasta \"{0}\" será criada automaticamente",
     "AddRootFolder": "Adicionar pasta raiz",
     "ThereWasAnErrorLoadingThisItem": "Houve um erro ao carregar este item",
-    "ThereWasAnErrorLoadingThisPage": "Houve um erro ao carregar esta página"
+    "ThereWasAnErrorLoadingThisPage": "Houve um erro ao carregar esta página",
+    "Languages": "Idiomas",
+    "PageCount": "Páginas",
+    "Select": "Selecionar",
+    "Added": "Adicionado",
+    "FileCount": "Ficheiros",
+    "Genres": "Géneros",
+    "SizeOnDisk": "Tamanho no disco"
 }

@@ -1122,5 +1122,12 @@
     "AddNewBook": "Añadir Nuevo Libro",
     "AddNewAuthor": "Añadir Nuevo Autor",
     "AddNewAuthorRootFolderHelpText": "La subcarpeta '{folder}' será creada automáticamente",
-    "AddRootFolder": "Añadir Carpeta Raíz"
+    "AddRootFolder": "Añadir Carpeta Raíz",
+    "Added": "Añadido",
+    "FileCount": "Archivos",
+    "Genres": "Géneros",
+    "Languages": "Idiomas",
+    "PageCount": "Páginas",
+    "Select": "Seleccionar",
+    "SizeOnDisk": "Tamaño en disco"
 }

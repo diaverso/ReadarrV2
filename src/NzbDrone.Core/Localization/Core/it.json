@@ -917,5 +917,12 @@
     "AddNewAuthorRootFolderHelpText": "La sottocartella '{0}' verrà creata automaticamente",
     "AddRootFolder": "Aggiungi Cartella Radice",
     "AddNewBook": "Aggiungi nuovo libro",
-    "AddNewAuthor": "Aggiungi nuovo autore"
+    "AddNewAuthor": "Aggiungi nuovo autore",
+    "Languages": "Lingue",
+    "PageCount": "Pagine",
+    "Select": "Seleziona",
+    "Added": "Aggiunto",
+    "FileCount": "File",
+    "Genres": "Generi",
+    "SizeOnDisk": "Dimensione su disco"
 }

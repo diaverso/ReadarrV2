@@ -655,5 +655,12 @@
     "Clone": "قريب",
     "BuiltIn": "مدمج",
     "AddNewAuthorRootFolderHelpText": "سيتم إنشاء المجلد الفرعي \"{folder}\" تلقائيًا",
-    "AddRootFolder": "إضافة مجلد جذر"
+    "AddRootFolder": "إضافة مجلد جذر",
+    "Languages": "اللغات",
+    "PageCount": "الصفحات",
+    "Select": "اختر",
+    "Added": "مُضاف",
+    "FileCount": "عدد الملفات",
+    "Genres": "الأنواع",
+    "SizeOnDisk": "الحجم على القرص"
 }

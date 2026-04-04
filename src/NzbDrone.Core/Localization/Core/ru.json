@@ -884,5 +884,12 @@
     "WhySearchesCouldBeFailing": "Нажмите здесь, чтобы найти причину ошибок писка",
     "LastSearched": "Искали недавно",
     "AddRootFolder": "Добавить корневой каталог",
-    "AddNewAuthorRootFolderHelpText": "Подпапка \"{folder}\" будет создана автоматически"
+    "AddNewAuthorRootFolderHelpText": "Подпапка \"{folder}\" будет создана автоматически",
+    "Languages": "Языки",
+    "PageCount": "Страниц",
+    "Select": "Выбрать",
+    "Added": "Добавлено",
+    "FileCount": "Файлов",
+    "Genres": "Жанры",
+    "SizeOnDisk": "Размер на диске"
 }

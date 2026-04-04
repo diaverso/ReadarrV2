@@ -203,7 +203,7 @@ export const defaultState = {
   columns: [
     {
       name: 'select',
-      columnLabel: 'Select',
+      columnLabel: () => translate('Select'),
       isSortable: false,
       isVisible: true,
       isModifiable: false,
@@ -211,38 +211,44 @@ export const defaultState = {
     },
     {
       name: 'monitored',
-      columnLabel: 'Monitored',
+      columnLabel: () => translate('Monitored'),
       isVisible: true,
       isModifiable: false
     },
     {
       name: 'title',
-      label: 'Title',
+      label: () => translate('Title'),
       isSortable: true,
       isVisible: true
     },
     {
       name: 'series',
-      label: 'Series',
+      label: () => translate('Series'),
       isSortable: true,
       isVisible: false
     },
     {
       name: 'releaseDate',
-      label: 'Release Date',
+      label: () => translate('ReleaseDate'),
       isSortable: true,
       isVisible: true
     },
     {
       name: 'pageCount',
-      label: 'Pages',
+      label: () => translate('PageCount'),
       isSortable: true,
       isVisible: true
     },
     {
       name: 'rating',
-      label: 'Rating',
+      label: () => translate('Rating'),
       isSortable: true,
+      isVisible: true
+    },
+    {
+      name: 'languages',
+      label: () => translate('Languages'),
+      isSortable: false,
       isVisible: true
     },
     {
@@ -256,13 +262,13 @@ export const defaultState = {
     },
     {
       name: 'status',
-      label: 'Status',
+      label: () => translate('Status'),
       isVisible: true,
       isSortable: true
     },
     {
       name: 'actions',
-      columnLabel: 'Actions',
+      columnLabel: () => translate('Actions'),
       isVisible: true,
       isModifiable: false
     }

@@ -67,6 +67,7 @@ class BookRow extends Component {
       authorName,
       position,
       pageCount,
+      editions,
       ratings,
       isSaving,
       authorMonitored,
@@ -196,6 +197,23 @@ class BookRow extends Component {
               );
             }
 
+            if (name === 'languages') {
+              const langs = editions
+                ? [...new Set(editions.filter((e) => e.language).map((e) => e.language))].join(', ')
+                : '';
+
+              return (
+                <TableRowCell
+                  key={name}
+                  className={styles.languages}
+                >
+                  <span title={langs}>
+                    {langs}
+                  </span>
+                </TableRowCell>
+              );
+            }
+
             if (name === 'indexerFlags') {
               return (
                 <TableRowCell
@@ -258,6 +276,7 @@ BookRow.propTypes = {
   authorName: PropTypes.string.isRequired,
   position: PropTypes.string,
   pageCount: PropTypes.number,
+  editions: PropTypes.arrayOf(PropTypes.object),
   ratings: PropTypes.object.isRequired,
   indexerFlags: PropTypes.number.isRequired,
   titleSlug: PropTypes.string.isRequired,

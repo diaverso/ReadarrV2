@@ -4,6 +4,7 @@ import { filterBuilderTypes, filterBuilderValueTypes, filterTypePredicates, sort
 import { createThunk, handleThunks } from 'Store/thunks';
 import sortByName from 'Utilities/Array/sortByName';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
+import translate from 'Utilities/String/translate';
 import { set, updateItem } from './baseActions';
 import { filterPredicates, filters, sortPredicates } from './bookActions';
 import createHandleActions from './Creators/createHandleActions';
@@ -59,7 +60,7 @@ export const defaultState = {
   columns: [
     {
       name: 'select',
-      columnLabel: 'Select',
+      columnLabel: () => translate('Select'),
       isSortable: false,
       isVisible: true,
       isModifiable: false,
@@ -67,82 +68,82 @@ export const defaultState = {
     },
     {
       name: 'status',
-      columnLabel: 'Status',
+      columnLabel: () => translate('Status'),
       isSortable: true,
       isVisible: true,
       isModifiable: false
     },
     {
       name: 'title',
-      label: 'Book',
+      label: () => translate('Book'),
       isSortable: true,
       isVisible: true,
       isModifiable: false
     },
     {
       name: 'authorName',
-      label: 'Author',
+      label: () => translate('Author'),
       isSortable: true,
       isVisible: true,
       isModifiable: true
     },
     {
       name: 'releaseDate',
-      label: 'Release Date',
+      label: () => translate('ReleaseDate'),
       isSortable: true,
       isVisible: false
     },
     {
       name: 'qualityProfileId',
-      label: 'Quality Profile',
+      label: () => translate('QualityProfile'),
       isSortable: true,
       isVisible: true
     },
     {
       name: 'added',
-      label: 'Added',
+      label: () => translate('Added'),
       isSortable: true,
       isVisible: false
     },
     {
       name: 'bookFileCount',
-      label: 'File Count',
+      label: () => translate('FileCount'),
       isSortable: true,
       isVisible: true
     },
     {
       name: 'path',
-      label: 'Path',
+      label: () => translate('Path'),
       isSortable: true,
       isVisible: false
     },
     {
       name: 'sizeOnDisk',
-      label: 'Size on Disk',
+      label: () => translate('SizeOnDisk'),
       isSortable: true,
       isVisible: false
     },
     {
       name: 'genres',
-      label: 'Genres',
+      label: () => translate('Genres'),
       isSortable: false,
       isVisible: false
     },
     {
       name: 'ratings',
-      label: 'Rating',
+      label: () => translate('Rating'),
       isSortable: true,
       isVisible: false
     },
     {
       name: 'tags',
-      label: 'Tags',
+      label: () => translate('Tags'),
       isSortable: false,
       isVisible: false
     },
     {
       name: 'actions',
-      columnLabel: 'Actions',
+      columnLabel: () => translate('Actions'),
       isVisible: true,
       isModifiable: false
     }
