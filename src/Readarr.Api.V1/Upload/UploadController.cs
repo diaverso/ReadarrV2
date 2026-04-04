@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Disk;
@@ -54,7 +55,7 @@ namespace Readarr.Api.V1.Upload
                 _diskProvider.CreateFolder(targetFolder);
             }
 
-            var uploadedFiles = new System.Collections.Generic.List<object>();
+            var uploadedFiles = new List<object>();
 
             foreach (var file in files)
             {
